@@ -24,7 +24,6 @@ def _require_env(key: str) -> str:
     return val
 
 
-
 class Config:
     # ──────────────────────────────────────────────────────────
     # 🔐 SECRET KEY
@@ -46,11 +45,13 @@ class Config:
 
     # ──────────────────────────────────────────────────────────
     # 📧  EMAIL  (Flask-Mail)
+    # Port 465 + SSL = Render pe kaam karta hai (587/TLS blocked hai)
     # ──────────────────────────────────────────────────────────
     MAIL_SERVER  = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-    MAIL_PORT    = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower()  == 'true'
-    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
+    MAIL_PORT    = int(os.environ.get('MAIL_PORT', 465))       # 587 → 465
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'False').lower() == 'true'  # False
+    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'True').lower()  == 'true'  # True
+    MAIL_TIMEOUT = int(os.environ.get('MAIL_TIMEOUT', 10))     # 10s max — worker timeout se bachao
 
     # Username aur password MUST be in .env — no hardcoded fallback.
     MAIL_USERNAME       = _require_env('MAIL_USERNAME')
