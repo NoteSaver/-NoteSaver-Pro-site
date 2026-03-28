@@ -221,6 +221,8 @@ db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+
+
 @login_manager.unauthorized_handler
 def unauthorized_callback():
     """
@@ -5992,8 +5994,7 @@ def after_request(response):
 
 # ------------------- App Initialization ---------------------
 
-with app.app_context():
-    db.create_all()
+
 
 if __name__ == '__main__':
     # Production mein debug=False karna chahiye
