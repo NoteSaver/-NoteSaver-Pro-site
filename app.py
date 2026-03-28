@@ -204,10 +204,6 @@ app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "notesaver:"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-# SESSION_SQLALCHEMY set hoga db.init_app ke baad
-
-Session(app)
-
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 
@@ -221,8 +217,9 @@ db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# SESSION_SQLALCHEMY — SQLAlchemy session backend (deploy ke baad bhi sessions valid rahenge)
+# SESSION_SQLALCHEMY — db.init_app ke BAAD set karo (Flask-Session requirement)
 app.config["SESSION_SQLALCHEMY"] = db
+Session(app)  # Ab sahi jagah — db already init ho chuka hai
 
 # Create all database tables on startup (Render pe SQLite ephemeral hai — har deploy pe chahiye)
 with app.app_context():
