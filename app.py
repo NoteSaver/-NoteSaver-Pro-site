@@ -221,6 +221,11 @@ db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+# Create all database tables on startup (required on Render where SQLite is ephemeral)
+with app.app_context():
+    db.create_all()
+    logger.info("Database tables created/verified successfully")
+
 
 
 @login_manager.unauthorized_handler
@@ -5892,7 +5897,15 @@ def forbidden(e):
 def internal_error(e):
     db.session.rollback()
     logger.error(f"500 error: {str(e)} at {request.url}")
-    return "Internal Server Error", 500
+    try:
+        return render_template('500.html'), 500
+    except Exception:
+        return """<!DOCTYPE html><html><head><title>Server Error</title>
+<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8f8f8;}
+h1{color:#e74c3c;}a{color:#3498db;}</style></head>
+<body><h1>500 - Internal Server Error</h1>
+<p>Something went wrong. Please try again later.</p>
+<a href="/">Go Home</a></body></html>""", 500
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
