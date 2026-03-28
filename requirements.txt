@@ -16,3 +16,4 @@ user-agents
 python-docx
 reportlab==4.0.4
 python-dotenv
+pytz
