@@ -5892,7 +5892,7 @@ def forbidden(e):
 def internal_error(e):
     db.session.rollback()
     logger.error(f"500 error: {str(e)} at {request.url}")
-    return render_template('500.html'), 500
+    return "Internal Server Error", 500
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
