@@ -2392,7 +2392,7 @@ def send_reset_email(user):
         f"To reset your password, visit:\n\n{reset_url}\n\n"
         "If you did not request this, ignore this email."
     )
-    thread = threading.Thread(target=_send_mail_async, args=(app._get_current_object(), msg))
+    thread = threading.Thread(target=_send_mail_async, args=(app, msg))
     thread.daemon = True
     thread.start()
     flash('A password reset link has been sent to your email.', 'info')
@@ -2497,9 +2497,9 @@ def is_otp_valid(email, otp_code):
         return True
     return False
 
-def _send_mail_async(app, msg):
+def _send_mail_async(flask_app, msg):
     """Send a Flask-Mail message in a background thread."""
-    with app.app_context():
+    with flask_app.app_context():
         try:
             mail.send(msg)
             logger.info(f"Async email sent to {msg.recipients}")
@@ -2522,7 +2522,7 @@ def send_verification_email(user, otp_code):
             "If you did not request this, ignore this email.\n\n"
             "Thank you,\nNoteSaver Pro Team"
         )
-        thread = threading.Thread(target=_send_mail_async, args=(app._get_current_object(), msg))
+        thread = threading.Thread(target=_send_mail_async, args=(app, msg))
         thread.daemon = True
         thread.start()
         return True
@@ -2543,7 +2543,7 @@ def send_username_reminder_email(user):
             "If you did not request this, secure your account immediately.\n\n"
             "Thank you,\nNoteSaver Pro Team"
         )
-        thread = threading.Thread(target=_send_mail_async, args=(app._get_current_object(), msg))
+        thread = threading.Thread(target=_send_mail_async, args=(app, msg))
         thread.daemon = True
         thread.start()
         return True
