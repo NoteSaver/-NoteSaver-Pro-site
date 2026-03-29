@@ -853,7 +853,20 @@ def check_collaboration_permission(view_function):
         return view_function(*args, **kwargs)
 
     return decorated_function
+def _dispatch_email(msg):
+    """Send email in background thread with app context"""
+    try:
+        app_obj = app._get_current_object() if hasattr(app, "_get_current_object") else app
 
+        def send_async():
+            with app_obj.app_context():
+                mail.send(msg)
+
+        thread = threading.Thread(target=send_async)
+        thread.start()
+
+    except Exception as e:
+        logger.error(f"Email dispatch error: {e}")
 
 def require_permission(required_permission):
     """
