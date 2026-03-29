@@ -1138,14 +1138,6 @@ def is_valid_email(email):
 def send_email_helper(to_email, subject, html_body):
     """
     Send email using Flask-Mail
-    
-    Args:
-        to_email (str): Recipient email address
-        subject (str): Email subject
-        html_body (str): Email HTML content
-    
-    Returns:
-        (bool, str): (success, error_message)
     """
     try:
         logger.info(f"🔄 Preparing email for: {to_email}")
@@ -1158,25 +1150,21 @@ def send_email_helper(to_email, subject, html_body):
         )
         
         logger.info(f"📤 Sending email...")
-# Send email async — never blocks worker
+        # Send email async — never blocks worker
         _dispatch_email(msg)
-        logger.info(f"✅ Note password reset email queued for: {user.email}")
+        logger.info(f"✅ Email queued for: {to_email}")
         return True, None
         
     except Exception as e:
         error_msg = str(e)
         logger.error(f"❌ Error sending email to {to_email}: {error_msg}")
         
-        # Log additional context
         if "BadCredentials" in error_msg:
             logger.error("   → Issue: Gmail credentials invalid")
-            logger.error("   → Solution: Check app password in config.py")
         elif "Connection refused" in error_msg:
             logger.error("   → Issue: SMTP server connection failed")
-            logger.error("   → Solution: Check MAIL_SERVER and MAIL_PORT")
         elif "timeout" in error_msg.lower():
             logger.error("   → Issue: Email service timeout")
-            logger.error("   → Solution: Increase MAIL_TIMEOUT in config")
         
         return False, error_msg
 
