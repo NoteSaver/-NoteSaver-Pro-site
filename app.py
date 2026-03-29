@@ -322,36 +322,34 @@ def support():
 def support_send_email():
     try:
         category = request.form.get('category', '').strip()
-        subject  = request.form.get('subject', '').strip()
-        message  = request.form.get('message', '').strip()
-
+        subject  = request.form.get('subject',  '').strip()
+        message  = request.form.get('message',  '').strip()
+ 
         if not all([category, subject, message]):
             return jsonify({'success': False, 'message': 'All fields are required.'}), 400
-
-        # Generate ticket ref
+ 
+        # Generate unique ticket ref
         ref = 'NSP-' + secrets.token_hex(3).upper()
-
-        # Save to DB
+ 
+        # Save to database
         ticket = SupportTicket(
-            ticket_ref=ref,
-            user_id=current_user.id,
-            category=category,
-            subject=subject,
-            message=message,
-            status='open'
+            ticket_ref = ref,
+            user_id    = current_user.id,
+            category   = category,
+            subject    = subject,
+            message    = message,
+            status     = 'open'
         )
         db.session.add(ticket)
         db.session.commit()
-
-        # =========================
-        # 📧 EMAIL TO ADMIN
-        # =========================
+ 
+        # Email to admin
         try:
             admin_msg = Message(
-                subject=f'[{category.upper()}] {subject} — Ticket {ref}',
-                sender=app.config.get('MAIL_DEFAULT_SENDER'),
-                recipients=[app.config.get('ADMIN_EMAIL', 'admin@notesaverpro.com')],
-                body=f"""New Support Ticket Received
+                subject  = f'[{category.upper()}] {subject} — Ticket {ref}',
+                sender   = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
+                recipients = [app.config.get('ADMIN_EMAIL', 'admin@notesaverpro.com')],
+                body = f"""New Support Ticket Received
 ══════════════════════════
 Ticket Ref : {ref}
 From       : {current_user.username} ({current_user.email})
@@ -366,50 +364,44 @@ Message:
 Reply at: {request.host_url}admin/support
 """
             )
-
             _dispatch_email(admin_msg)
-
         except Exception as mail_err:
             logger.warning(f'Admin email queue failed: {mail_err}')
-
-        # =========================
-        # 📧 EMAIL TO USER
-        # =========================
+ 
+        # Confirmation email to user
         try:
             user_msg = Message(
-                subject=f'We received your request — {ref}',
-                sender=app.config.get('MAIL_DEFAULT_SENDER'),
-                recipients=[current_user.email],
-                body=f"""Hi {current_user.first_name or current_user.username},
-
+                subject    = f'We received your request — {ref}',
+                sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
+                recipients = [current_user.email],
+                body = f"""Hi {current_user.first_name or current_user.username},
+ 
 Thank you for contacting NoteSaver Pro Support.
-
+ 
 Your ticket has been created:
-Ticket Ref : {ref}
-Subject    : {subject}
-Category   : {category}
-
-We typically reply within 2 hours.
-
-Track your ticket:
+  Ticket Ref : {ref}
+  Subject    : {subject}
+  Category   : {category}
+ 
+We typically reply within 2 hours. You can check your ticket status at:
 {request.host_url}support/my-tickets
-
+ 
 Best regards,
 NoteSaver Pro Support Team
 """
             )
-
             _dispatch_email(user_msg)
-
         except Exception as mail_err:
             logger.warning(f'User confirmation email queue failed: {mail_err}')
-
+ 
         return jsonify({'success': True, 'ticket_ref': ref})
-
+ 
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Support ticket error: {e}')
+        print(f'Support ticket error: {e}')
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
+ 
+ 
 # ---------- User: My Tickets ----------
 @app.route('/support/my-tickets')
 @login_required
@@ -511,7 +503,7 @@ Best regards,
 NoteSaver Pro Support Team
 """
         )
-_dispatch_email(reply_msg)
+        _dispatch_email(reply_msg)
     except Exception as e:
         logger.warning(f'Reply email queue failed: {e}')
  
@@ -867,7 +859,7 @@ def _dispatch_email(msg):
         app_obj = app._get_current_object() if hasattr(app, "_get_current_object") else app
 
         def send_async():
-            with app.app_context():
+            with app_obj.app_context():
                 mail.send(msg)
 
         thread = threading.Thread(target=send_async)
