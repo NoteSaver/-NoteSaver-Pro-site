@@ -854,19 +854,77 @@ def check_collaboration_permission(view_function):
 
     return decorated_function
 def _dispatch_email(msg):
-    """Send email in background thread with app context"""
+    """
+    Send email via SendGrid HTTP API.
+    Render free tier pe SMTP (587/465) blocked hai,
+    isliye HTTP API use karo jo port 443 pe kaam karta hai.
+    """
     try:
         app_obj = app._get_current_object() if hasattr(app, "_get_current_object") else app
 
         def send_async():
             with app_obj.app_context():
-                mail.send(msg)
+                try:
+                    import sendgrid
+                    from sendgrid.helpers.mail import (
+                        Mail as SGMail, To, From, Subject,
+                        PlainTextContent, HtmlContent
+                    )
+
+                    api_key = os.environ.get('SENDGRID_API_KEY', '')
+                    if not api_key:
+                        logger.error("SENDGRID_API_KEY not set in environment!")
+                        return
+
+                    sg = sendgrid.SendGridAPIClient(api_key=api_key)
+
+                    from_email = From(
+                        app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
+                    )
+
+                    # recipients list handle karo
+                    recipients = msg.recipients
+                    if isinstance(recipients, str):
+                        recipients = [recipients]
+
+                    sg_msg = SGMail()
+                    sg_msg.from_email = from_email
+                    sg_msg.subject = Subject(msg.subject or '(no subject)')
+
+                    for recipient in recipients:
+                        sg_msg.add_to(To(recipient))
+
+                    # HTML ya plain text
+                    html_body = getattr(msg, 'html', None)
+                    plain_body = getattr(msg, 'body', None)
+
+                    if html_body:
+                        sg_msg.content = [HtmlContent(html_body)]
+                    elif plain_body:
+                        sg_msg.content = [PlainTextContent(plain_body)]
+                    else:
+                        sg_msg.content = [PlainTextContent('(empty message)')]
+
+                    response = sg.send(sg_msg)
+                    logger.info(
+                        f"✅ Email sent via SendGrid HTTP API | "
+                        f"status={response.status_code} | to={recipients}"
+                    )
+
+                except Exception as e:
+                    logger.error(f"❌ SendGrid HTTP email failed to {msg.recipients}: {e}")
 
         thread = threading.Thread(target=send_async)
+        thread.daemon = True
         thread.start()
 
     except Exception as e:
-        logger.error(f"Email dispatch error: {e}")
+        logger.error(f"Email dispatch setup error: {e}")
+
+
+def _send_mail_async(flask_app, msg):
+    """Legacy wrapper — now routes through SendGrid HTTP API."""
+    _dispatch_email(msg)
 
 def require_permission(required_permission):
     """
@@ -1137,47 +1195,26 @@ def is_valid_email(email):
 
 def send_email_helper(to_email, subject, html_body):
     """
-    Send email using Flask-Mail
-    
-    Args:
-        to_email (str): Recipient email address
-        subject (str): Email subject
-        html_body (str): Email HTML content
-    
-    Returns:
-        (bool, str): (success, error_message)
+    Send email via SendGrid HTTP API.
+    Returns: (bool, error_message_or_None)
     """
     try:
         logger.info(f"🔄 Preparing email for: {to_email}")
         logger.info(f"   Subject: {subject[:50]}...")
-        
+
         msg = Message(
             subject=subject,
             recipients=[to_email],
             html=html_body
         )
-        
-        logger.info(f"📤 Sending email...")
-# Send email async — never blocks worker
+
         _dispatch_email(msg)
-        logger.info(f"✅ Note password reset email queued for: {user.email}")
+        logger.info(f"✅ Email queued for: {to_email}")
         return True, None
-        
+
     except Exception as e:
         error_msg = str(e)
         logger.error(f"❌ Error sending email to {to_email}: {error_msg}")
-        
-        # Log additional context
-        if "BadCredentials" in error_msg:
-            logger.error("   → Issue: Gmail credentials invalid")
-            logger.error("   → Solution: Check app password in config.py")
-        elif "Connection refused" in error_msg:
-            logger.error("   → Issue: SMTP server connection failed")
-            logger.error("   → Solution: Check MAIL_SERVER and MAIL_PORT")
-        elif "timeout" in error_msg.lower():
-            logger.error("   → Issue: Email service timeout")
-            logger.error("   → Solution: Increase MAIL_TIMEOUT in config")
-        
         return False, error_msg
 
 
@@ -2521,7 +2558,7 @@ def _send_mail_async(flask_app, msg):
 
 
 def send_verification_email(user, otp_code):
-    """Queue OTP email in background thread — never blocks the web worker."""
+    """Queue OTP email via SendGrid HTTP API."""
     try:
         msg = Message(
             "NoteSaver Pro: Email Verification Code",
@@ -2535,9 +2572,7 @@ def send_verification_email(user, otp_code):
             "If you did not request this, ignore this email.\n\n"
             "Thank you,\nNoteSaver Pro Team"
         )
-        thread = threading.Thread(target=_send_mail_async, args=(app, msg))
-        thread.daemon = True
-        thread.start()
+        _dispatch_email(msg)   # ✅ HTTP API — SMTP nahi
         return True
     except Exception as e:
         logger.error(f"Error queuing verification email to {user.email}: {e}")
@@ -2554,11 +2589,9 @@ def send_username_reminder_email(user):
             f"Hello,\n\n"
             f"Your username is: {user.username}\n\n"
             "If you did not request this, secure your account immediately.\n\n"
-            "Thank you,\nNoteSaver Pro Team"
+            "NoteSaver Pro Team"
         )
-        thread = threading.Thread(target=_send_mail_async, args=(app, msg))
-        thread.daemon = True
-        thread.start()
+        _dispatch_email(msg)   # ✅ HTTP API
         return True
     except Exception as e:
         logger.error(f"Error queuing username reminder to {user.email}: {e}")
@@ -5572,81 +5605,77 @@ def api_reset_note_password():
 
 
 # ALSO FIX: send_note_password_reset_email function
-def send_note_password_reset_email(user):
-    """Send note password reset email - MUST BE DEFINED BEFORE ROUTES"""
+def _send_mail_async(flask_app, msg):
+    """Legacy wrapper — now routes through SendGrid HTTP API."""
+    _dispatch_email(msg)
+
+
+def send_verification_email(user, otp_code):
+    """Queue OTP email via SendGrid HTTP API."""
     try:
-        # Check if mail is configured
-        if not app.config.get('MAIL_SERVER'):
-            logger.error("MAIL_SERVER not configured in app.config")
-            raise Exception("Email service not configured")
-        
-        # Generate token
+        msg = Message(
+            "NoteSaver Pro: Email Verification Code",
+            sender=app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[user.email]
+        )
+        msg.body = (
+            f"Hello {user.username},\n\n"
+            f"Your verification code is: {otp_code}\n\n"
+            "This code expires in 5 minutes. "
+            "If you did not request this, ignore this email.\n\n"
+            "Thank you,\nNoteSaver Pro Team"
+        )
+        _dispatch_email(msg)   # ✅ HTTP API — SMTP nahi
+        return True
+    except Exception as e:
+        logger.error(f"Error queuing verification email to {user.email}: {e}")
+        return False
+
+
+def send_note_password_reset_email(user):
+    """Send note password reset email via SendGrid HTTP API."""
+    try:
         token = serializer.dumps(user.email, salt='note-password-reset-salt')
         reset_url = url_for('selective_note_reset', token=token, _external=True)
 
-        # ✅ FIX: Count notes with is_private=True (includes both proper password-protected and edge cases)
         protected_count = Note.query.filter(
             Note.user_id == user.id,
             Note.is_private == True
         ).count()
-        
-        if protected_count == 0:
-            logger.info(f"No protected notes found for user {user.username}")
-        
-        # Create message
+
         msg = Message(
             "Note Password Reset Request - NoteSaver Pro",
             sender=app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaver.com'),
             recipients=[user.email]
         )
-        
-        # Plain text version
-        msg.body = f"""Hello {user.username},
-
-You requested to reset passwords for your protected notes.
-
-You currently have {protected_count} password-protected note(s).
-
-To choose which notes to reset, click the link below:
-{reset_url}
-
-If you did not request this reset, please ignore this email.
-
-This link will expire in 1 hour for security reasons.
-
-Best regards,
-NoteSaver Pro Team"""
-        
-        # HTML version
+        msg.body = (
+            f"Hello {user.username},\n\n"
+            f"You have {protected_count} protected note(s).\n\n"
+            f"Reset link: {reset_url}\n\n"
+            "Link expires in 1 hour.\n\nNoteSaver Pro Team"
+        )
         msg.html = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
                 <h2 style="color: #dc3545;">🔐 Note Password Reset</h2>
                 <p>Hello <strong>{user.username}</strong>,</p>
-                <p>You requested to reset passwords for your protected notes.</p>
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                    <p><strong>📊 Status:</strong> You have <strong>{protected_count}</strong> password-protected note(s).</p>
-                </div>
+                <p>You have <strong>{protected_count}</strong> protected note(s).</p>
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="{reset_url}" 
-                       style="background: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                    <a href="{reset_url}"
+                       style="background: #dc3545; color: white; padding: 12px 25px;
+                              text-decoration: none; border-radius: 5px; display: inline-block;">
                         Select Notes to Reset
                     </a>
                 </div>
-                <hr style="margin: 30px 0;">
-                <p><small>If you did not request this, ignore this email.</small></p>
                 <p><small>Link expires in 1 hour.</small></p>
             </div>
         </div>
         """
-        
-        # Send email
-        mail.send(msg)
-        logger.info(f"✅ Note password reset email sent to: {user.email}")
-        
+        _dispatch_email(msg)   # ✅ HTTP API — SMTP nahi
+        logger.info(f"✅ Note password reset email queued for: {user.email}")
+
     except Exception as e:
         logger.error(f"❌ Error sending note password reset email: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
         raise
 
 
