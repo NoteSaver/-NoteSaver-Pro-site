@@ -45,13 +45,30 @@ class Config:
 
     # ──────────────────────────────────────────────────────────
     # 📧  EMAIL  (Flask-Mail)
-    # Port 465 + SSL = Render pe kaam karta hai (587/TLS blocked hai)
+    #
+    # Render.com pe SMTP ports:
+    #   Port 465 (SSL)  — blocked on Render free tier
+    #   Port 587 (TLS)  — works on Render (recommended)
+    #   Port 2525       — fallback if 587 also blocked
+    #
+    # Gmail App Password setup:
+    #   1. Google Account → Security → 2-Step Verification → ON
+    #   2. Security → App Passwords → Generate → copy 16-char password
+    #   3. MAIL_PASSWORD=<16-char app password> in .env
+    #
+    # SendGrid (alternative — 100 emails/day free):
+    #   MAIL_SERVER=smtp.sendgrid.net
+    #   MAIL_PORT=587
+    #   MAIL_USE_TLS=True
+    #   MAIL_USE_SSL=False
+    #   MAIL_USERNAME=apikey
+    #   MAIL_PASSWORD=<your_sendgrid_api_key>
     # ──────────────────────────────────────────────────────────
-    MAIL_SERVER  = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-    MAIL_PORT    = int(os.environ.get('MAIL_PORT', 465))       # 587 → 465
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'False').lower() == 'true'  # False
-    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'True').lower()  == 'true'  # True
-    MAIL_TIMEOUT = int(os.environ.get('MAIL_TIMEOUT', 10))     # 10s max — worker timeout se bachao
+    MAIL_SERVER  = os.environ.get('MAIL_SERVER',  'smtp.gmail.com')
+    MAIL_PORT    = int(os.environ.get('MAIL_PORT', 587))                        # 587 (TLS) — Render compatible
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower()  == 'true'   # True  for port 587
+    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'   # False for port 587
+    MAIL_TIMEOUT = int(os.environ.get('MAIL_TIMEOUT', 10))                     # 10s — worker timeout se bachao
 
     # Username aur password MUST be in .env — no hardcoded fallback.
     MAIL_USERNAME       = _require_env('MAIL_USERNAME')
