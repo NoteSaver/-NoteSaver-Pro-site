@@ -1,24 +1,16 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
  * ║                                                                              ║
- * ║   🔥  WORD FLOW ENGINE  —  v5.0  "ULTRA SMOOTH EDITION"                    ║
+ * ║   🔥  WORD FLOW ENGINE  —  v4.1  "POWER KEYS EDITION"                      ║
  * ║                                                                              ║
  * ║   Architecture: Plugin-based, version-safe, zero-dependency                 ║
  * ║                                                                              ║
- * ║   v5.0 MEGA UPGRADES:                                                        ║
- * ║   ⚡ Zero-flicker reflow — RAF double-buffer, no layout thrash              ║
- * ║   ⚡ Universal paste — Word/GDocs/HTML/RTF/plain text all supported         ║
- * ║   ⚡ Smart cursor — never jumps, always lands exactly right                 ║
- * ║   ⚡ Multi-page selection — Ctrl+A, Shift+Click across pages               ║
- * ║   ⚡ Overflow/underflow smooth — CSS transition, no pop                     ║
- * ║   ⚡ Hindi/Arabic/CJK/RTL — full Unicode, Intl.Segmenter aware             ║
- * ║   ⚡ Virtual reflow queue — never drops keystrokes                          ║
- * ║   ⚡ IntersectionObserver lazy reflow — only visible pages reflow           ║
- * ║   ⚡ Smart paragraph split — bisect algorithm, pixel-perfect               ║
- * ║   ⚡ Drag & drop text — within and across pages                             ║
- * ║   ⚡ Find & Replace engine — regex support, multi-page                      ║
- * ║   ⚡ Spell-check API hook — custom dictionary support                       ║
- * ║   ⚡ Clipboard chain — multi-format, image paste                            ║
+ * ║   UPGRADED IN v4.1:                                                          ║
+ * ║   ⚡ Backspace — smooth animated merge, no flicker, exact cursor           ║
+ * ║   ⚡ Delete Forward — symmetric smooth merge with animation                 ║
+ * ║   ⚡ Enter — smart paragraph insertion, instant page creation              ║
+ * ║   ⚡ Cross-page merge — DOM-move strategy, cursor never jumps              ║
+ * ║   ⚡ Merge animation — fade + slide, CSS-driven, no layout thrash          ║
  * ║                                                                              ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
@@ -33,27 +25,17 @@
 }(typeof window !== 'undefined' ? window : this, function () {
     'use strict';
 
-    const ENGINE_VERSION = '5.0.0';
+    const ENGINE_VERSION = '4.5.0';
 
-    /* ═══════════════════════════════════════════════════════
-     *  1 ▸ EVENT BUS  (async + priority support)
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  1 ▸ EVENT BUS
+     * ───────────────────────────────────────────────── */
     class EventBus {
-        constructor() {
-            this._map = Object.create(null);
-            this._once = new WeakSet();
-        }
+        constructor() { this._map = Object.create(null); }
 
-        on(event, fn, ctx = null, priority = 0) {
-            const listeners = this._map[event] = this._map[event] || [];
-            listeners.push({ fn, ctx, priority });
-            listeners.sort((a, b) => b.priority - a.priority);
+        on(event, fn, ctx = null) {
+            (this._map[event] = this._map[event] || []).push({ fn, ctx });
             return () => this.off(event, fn);
-        }
-
-        once(event, fn, ctx = null) {
-            const wrapped = (...args) => { this.off(event, wrapped); fn.apply(ctx, args); };
-            return this.on(event, wrapped, null);
         }
 
         off(event, fn) {
@@ -62,7 +44,7 @@
         }
 
         emit(event, ...args) {
-            (this._map[event] || []).slice().forEach(({ fn, ctx }) => {
+            (this._map[event] || []).forEach(({ fn, ctx }) => {
                 try { fn.apply(ctx, args); }
                 catch (e) { console.error(`[EventBus] "${event}" handler error:`, e); }
             });
@@ -80,9 +62,9 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
+    /* ─────────────────────────────────────────────────
      *  2 ▸ CONFIG MANAGER
-     * ═══════════════════════════════════════════════════════ */
+     * ───────────────────────────────────────────────── */
     class ConfigManager {
         constructor(defaults) { this._c = JSON.parse(JSON.stringify(defaults)); }
 
@@ -92,18 +74,13 @@
             return path.split('.').reduce((o, k) => (o != null ? o[k] : undefined), this._c);
         }
 
-        set(path, value) {
-            const keys = path.split('.');
-            const last = keys.pop();
-            const obj = keys.reduce((o, k) => (o[k] = o[k] || {}), this._c);
-            obj[last] = value;
-            return this;
-        }
-
         _deepMerge(tgt, src) {
             if (!src || typeof src !== 'object') return;
             for (const k of Object.keys(src)) {
-                if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && tgt[k] && typeof tgt[k] === 'object') {
+                if (
+                    src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) &&
+                    tgt[k] && typeof tgt[k] === 'object'
+                ) {
                     this._deepMerge(tgt[k], src[k]);
                 } else {
                     tgt[k] = src[k];
@@ -113,9 +90,9 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
+    /* ─────────────────────────────────────────────────
      *  3 ▸ VERSION MANAGER
-     * ═══════════════════════════════════════════════════════ */
+     * ───────────────────────────────────────────────── */
     class VersionManager {
         constructor(storageKey = 'wf_engine_ver') {
             this._key  = storageKey;
@@ -127,13 +104,15 @@
         runMigrations(current) {
             const stored = this._read();
             if (stored === current) return;
+
             [...this._migs.entries()]
                 .filter(([v]) => this._cmp(v, stored) > 0)
                 .sort(([a], [b]) => this._cmp(a, b))
                 .forEach(([v, fn]) => {
-                    try { fn({ from: stored, to: v }); }
+                    try { fn({ from: stored, to: v }); console.log(`[VersionManager] Migrated → ${v}`); }
                     catch (e) { console.error(`[VersionManager] Migration ${v} failed:`, e); }
                 });
+
             this._write(current);
         }
 
@@ -147,9 +126,9 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
+    /* ─────────────────────────────────────────────────
      *  4 ▸ PAPER REGISTRY
-     * ═══════════════════════════════════════════════════════ */
+     * ───────────────────────────────────────────────── */
     const PaperRegistry = (() => {
         const db = {
             letter:    { w: 816,  h: 1056, marginPx: 96  },
@@ -160,157 +139,98 @@
             a5:        { w: 559,  h: 794,  marginPx: 64  },
         };
         return {
-            get(name)       { return db[name] || db['a4']; },
-            add(name, dims) { db[name] = dims; return this; },
-            has(name)       { return name in db; },
-            all()           { return { ...db }; },
+            get(name)        { return db[name] || db['a4']; },
+            add(name, dims)  { db[name] = dims; return this; },
+            has(name)        { return name in db; },
+            all()            { return { ...db }; },
         };
     })();
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  5 ▸ HTML SANITIZER  v5.0
-     *  Universal paste support:
-     *  - MS Word (with mso namespace)
-     *  - Google Docs
-     *  - LibreOffice
-     *  - Apple Pages
-     *  - Plain HTML
-     *  - RTF-to-HTML conversion
-     *  Preserves: Hindi/Devanagari, Arabic, CJK, RTL, fonts
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  5 ▸ HTML SANITIZER
+     *  🔧 HINDI/INDIC FIX v4.1.1:
+     *     - Preserve lang/font spans so Devanagari isn't stripped
+     *     - Keep mso-bidi-language and font-family style props
+     *     - Selective mso style stripping (layout only, not language)
+     * ───────────────────────────────────────────────── */
     class HTMLSanitizer {
-
         static clean(html) {
             if (!html) return '<p><br></p>';
             const div = document.createElement('div');
             div.innerHTML = html;
-            div.querySelectorAll('script,style,meta,link,iframe,object,embed,form,noscript').forEach(el => el.remove());
+
+            div.querySelectorAll('script,style,meta,link,iframe,object,embed,form')
+               .forEach(el => el.remove());
+
             div.querySelectorAll('*').forEach(el => {
                 Array.from(el.attributes).forEach(attr => {
-                    if (/^on/i.test(attr.name) || /javascript:/i.test(attr.value) || /vbscript:/i.test(attr.value)) {
-                        el.removeAttribute(attr.name);
-                    }
+                    if (
+                        /^on/i.test(attr.name) ||
+                        /javascript:/i.test(attr.value) ||
+                        /vbscript:/i.test(attr.value)
+                    ) el.removeAttribute(attr.name);
+                    // NOTE: lang, dir, font-* attrs intentionally preserved
+                    // — required for correct Devanagari / Indic script rendering
                 });
             });
+
             return div.innerHTML || '<p><br></p>';
         }
 
-        // ── Universal paste normalizer ──────────────────────────────
-        static normalizeFromPaste(html, plainText = '') {
-            if (!html && plainText) return HTMLSanitizer._plainToHTML(plainText);
+        static normalizeFromPaste(html) {
             if (!html) return '<p><br></p>';
+            let n = html
+                .replace(/<\/?o:[^>]*>/gi, '')
+                .replace(/<\/?w:[^>]*>/gi, '')
+                .replace(/<!--\[if[^\]]*\]>[\s\S]*?<!\[endif\]-->/gi, '');
 
-            // Detect source
-            const isWord    = /class="?MsoNormal|mso-|urn:schemas-microsoft-com/.test(html);
-            const isGDocs   = /id="docs-internal-guid|google-docs/.test(html);
-            const isNotion  = /notion-\w|data-notion/.test(html);
+            n = n.replace(/<div([^>]*)>/gi, '<p$1>').replace(/<\/div>/gi, '</p>');
 
-            let n = html;
-
-            // ── Strip XML/Office namespaces ──
-            n = n.replace(/<\/?o:[^>]*>/gi, '')
-                 .replace(/<\/?w:[^>]*>/gi, '')
-                 .replace(/<\/?m:[^>]*>/gi, '')
-                 .replace(/<!--\[if[^\]]*\]>[\s\S]*?<!\[endif\]-->/gi, '')
-                 .replace(/<!--.*?-->/gis, '');
-
-            // ── div → p conversion (but NOT for gdocs which uses spans in p) ──
-            if (!isGDocs) {
-                n = n.replace(/<div([^>]*)>/gi, '<p$1>').replace(/<\/div>/gi, '</p>');
-            }
-
-            // ── Smart mso style stripping ──
+            // 🔧 HINDI FIX 1: Selective mso style stripping
+            // Only remove layout-breaking mso props; preserve mso-bidi-language,
+            // mso-ascii-font-family, mso-fareast-font-family (needed for Hindi/Indic)
             n = n.replace(/style="([^"]*)"/gi, (_, style) => {
-                const props = style.split(';').map(s => s.trim()).filter(Boolean);
-                const safe = props.filter(s => {
-                    // Remove layout mso props
-                    if (/mso-(para-margin|margin|indent|list|pagination|line-height|spacerun|tab-stop|ansi|bidi-font-size)/i.test(s)) return false;
-                    // Remove generic Word cruft
-                    if (/^(margin|padding|text-indent|line-height|page-break)/.test(s) && isWord) return false;
-                    return true;
-                });
-                return safe.length ? `style="${safe.join('; ')}"` : '';
+                const safe = style
+                    .split(';')
+                    .map(s => s.trim())
+                    .filter(s => {
+                        if (!s) return false;
+                        // Strip only layout/spacing mso props — NOT bidi/font/language
+                        if (/mso-(para-margin|margin|indent|list|pagination|line-height|spacerun|tab-stop)/i.test(s)) return false;
+                        return true;
+                    })
+                    .join('; ');
+                return safe.trim() ? `style="${safe}"` : '';
             });
 
-            // ── Strip mso class names ──
+            // Strip mso class names only (not lang or other attrs)
             n = n.replace(/\s*class="[^"]*mso[^"]*"/gi, '');
 
-            // ── Empty paragraph normalization ──
-            n = n.replace(/<p[^>]*>\s*(<br\s*\/?>\s*)*<\/p>/gi, '<p><br></p>');
+            n = n.replace(/<p[^>]*>\s*<\/p>/gi, '<p><br></p>');
 
-            // ── Smart span preservation ──
-            // Keep spans that carry actual text information (lang, font, color, direction)
+            // 🔧 HINDI FIX 2: Selective span unwrapping
+            // Preserve spans carrying lang, font, or dir attributes
+            // (these are critical for Devanagari rendering in browsers)
             n = n.replace(/<span([^>]*)>([\s\S]*?)<\/span>/gi, (match, attrs, inner) => {
-                const hasStyle = /style="[^"]*(?:font-|color|background|text-decoration|font-weight|font-style)/i.test(attrs);
-                const hasLang  = /lang=|dir=|unicode-bidi/i.test(attrs);
-                const hasMso   = /mso-bidi-language|mso-ascii-font-family|mso-fareast/i.test(attrs);
-                if (hasStyle || hasLang || hasMso) return `<span${attrs}>${inner}</span>`;
+                // Keep span if it carries script/language/font info
+                if (/lang=|font-family|mso-bidi|dir=|unicode-bidi/i.test(attrs)) {
+                    return `<span${attrs}>${inner}</span>`;
+                }
+                // Strip purely decorative/empty spans
                 return inner;
             });
 
-            // ── Google Docs specific cleanup ──
-            if (isGDocs) {
-                n = n.replace(/ id="docs-internal-guid-[^"]*"/g, '');
-                n = n.replace(/<b\s+[^>]*font-weight:\s*normal[^>]*>/gi, '');
-            }
-
-            // ── Notion cleanup ──
-            if (isNotion) {
-                n = n.replace(/data-notion-[^"]*="[^"]*"/g, '');
-            }
-
-            // ── Fix consecutive BRs → new paragraphs ──
-            n = n.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
-
-            // ── Remove empty spans ──
-            n = n.replace(/<span[^>]*>\s*<\/span>/gi, '');
-
-            // ── Collapse redundant nested formatting ──
-            n = n.replace(/<b><b>/gi, '<b>').replace(/<\/b><\/b>/gi, '</b>');
-            n = n.replace(/<i><i>/gi, '<i>').replace(/<\/i><\/i>/gi, '</i>');
-
             return n.trim() || '<p><br></p>';
-        }
-
-        // ── Plain text → rich paragraphs ──
-        static _plainToHTML(text) {
-            return text
-                .split(/\r?\n/)
-                .map(line => {
-                    const escaped = line
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/  /g, '&nbsp; ');
-                    return `<p>${escaped || '<br>'}</p>`;
-                })
-                .join('');
-        }
-
-        // ── Extract clean plain text preserving structure ──
-        static toPlainText(html) {
-            const div = document.createElement('div');
-            div.innerHTML = html;
-            div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-            div.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li').forEach(el => {
-                el.insertAdjacentText('afterend', '\n');
-            });
-            return div.textContent.replace(/\n{3,}/g, '\n\n').trim();
         }
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  6 ▸ CURSOR MANAGER  v5.0
-     *  - Stable node identity across reflows (uses path-based fallback)
-     *  - Cross-page selection support
-     *  - RTL-aware positioning
-     *  - Visual scroll-into-view on restore
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  6 ▸ CURSOR MANAGER  (unchanged from v4.0)
+     * ───────────────────────────────────────────────── */
     class CursorManager {
 
-        // Save: stores both offset AND node-path for robustness
         static save(container) {
             const sel = window.getSelection();
             if (!sel?.rangeCount) return null;
@@ -319,61 +239,31 @@
             const pc = CursorManager._ancestorPC(range.startContainer);
             if (!pc) return null;
 
-            const page    = pc.closest('.editor-page');
+            const page = pc.closest('.editor-page');
             if (!page) return null;
-            const pageNum = parseInt(page.dataset.page, 10) || 1;
 
+            const pageNum  = parseInt(page.dataset.page, 10) || 1;
             const startOff = CursorManager._offset(pc, range.startContainer, range.startOffset);
             const endOff   = range.collapsed
                 ? startOff
                 : CursorManager._offset(pc, range.endContainer, range.endOffset);
 
-            // Also save node path for robust restoration
-            const nodePath = CursorManager._nodePath(pc, range.startContainer);
-
-            return {
-                pageNum,
-                startOff,
-                endOff,
-                isCollapsed: range.collapsed,
-                nodePath,
-                nodeOffset: range.startOffset,
-                totalText: pc.textContent.length,
-            };
+            return { pageNum, startOff, endOff, isCollapsed: range.collapsed };
         }
 
         static restore(saved, container) {
             if (!saved) return;
             try {
-                const pcs = [
-                    CursorManager._pc(saved.pageNum, container),
-                    CursorManager._pc(saved.pageNum - 1, container),
-                    CursorManager._pc(saved.pageNum + 1, container),
-                    container.querySelector('.page-content'),
-                ].filter(Boolean);
-
-                const pc = pcs[0];
+                let pc = CursorManager._pc(saved.pageNum, container)
+                      || CursorManager._pc(saved.pageNum - 1, container)
+                      || CursorManager._pc(saved.pageNum + 1, container)
+                      || container.querySelector('.page-content');
                 if (!pc) return;
 
                 pc.focus({ preventScroll: true });
                 const sel   = window.getSelection();
                 const range = document.createRange();
 
-                // Try path-based restoration first (most accurate)
-                const pathNode = CursorManager._nodeFromPath(pc, saved.nodePath);
-                if (pathNode) {
-                    const safeOffset = Math.min(saved.nodeOffset, pathNode.length || pathNode.childNodes.length);
-                    range.setStart(pathNode, safeOffset);
-                    range.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-
-                    // Scroll into view
-                    CursorManager._scrollIntoView(range);
-                    return;
-                }
-
-                // Fallback: offset-based restoration
                 const sn = CursorManager._nodeAt(pc, saved.startOff);
                 if (sn) {
                     range.setStart(sn.node, sn.offset);
@@ -385,29 +275,17 @@
                     }
                     sel.removeAllRanges();
                     sel.addRange(range);
-                    CursorManager._scrollIntoView(range);
                     return;
                 }
 
-                // Last resort: end of page
                 range.selectNodeContents(pc);
                 range.collapse(false);
                 sel.removeAllRanges();
                 sel.addRange(range);
+
             } catch (e) {
                 console.warn('[CursorManager] restore failed:', e);
             }
-        }
-
-        static _scrollIntoView(range) {
-            try {
-                const rect = range.getBoundingClientRect();
-                const vh   = window.innerHeight;
-                if (rect.bottom > vh - 40 || rect.top < 60) {
-                    const el = range.startContainer?.parentElement || range.startContainer;
-                    el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
-                }
-            } catch (_) {}
         }
 
         static setCursorAtEnd(pc) {
@@ -419,7 +297,7 @@
             let last = null, n;
             while ((n = w.nextNode())) last = n;
             if (last) { range.setStart(last, last.length); }
-            else      { range.selectNodeContents(pc); range.collapse(false); }
+            else       { range.selectNodeContents(pc); range.collapse(false); }
             range.collapse(true);
             sel.removeAllRanges();
             sel.addRange(range);
@@ -431,20 +309,6 @@
             const range = document.createRange();
             const sel   = window.getSelection();
             range.selectNodeContents(pc);
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
-
-        // Place cursor at char offset within pc
-        static setCursorAtOffset(pc, charOffset) {
-            if (!pc) return;
-            const node = CursorManager._nodeAt(pc, charOffset);
-            if (!node) { CursorManager.setCursorAtEnd(pc); return; }
-            pc.focus({ preventScroll: true });
-            const range = document.createRange();
-            const sel   = window.getSelection();
-            range.setStart(node.node, node.offset);
             range.collapse(true);
             sel.removeAllRanges();
             sel.addRange(range);
@@ -467,31 +331,6 @@
             while ((n = w.nextNode())) last = n;
             if (!last) return true;
             return range.startContainer === last && range.startOffset >= last.length;
-        }
-
-        // ── Node path for robust restoration ──
-        static _nodePath(root, node) {
-            const path = [];
-            let cur = node;
-            while (cur && cur !== root) {
-                const parent = cur.parentNode;
-                if (!parent) break;
-                path.unshift(Array.from(parent.childNodes).indexOf(cur));
-                cur = parent;
-            }
-            return path;
-        }
-
-        static _nodeFromPath(root, path) {
-            if (!path || !path.length) return null;
-            try {
-                let node = root;
-                for (const idx of path) {
-                    if (!node.childNodes[idx]) return null;
-                    node = node.childNodes[idx];
-                }
-                return node;
-            } catch { return null; }
         }
 
         static _ancestorPC(node) {
@@ -531,34 +370,21 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  7 ▸ UNDO / REDO MANAGER  v5.0
-     *  - Debounced push (groups rapid typing)
-     *  - Compression: deduplicates identical states
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  7 ▸ UNDO / REDO MANAGER
+     * ───────────────────────────────────────────────── */
     class UndoRedoManager {
-        constructor(max = 200) {
+        constructor(max = 100) {
             this._stack    = [];
             this._idx      = -1;
             this._max      = max;
             this._applying = false;
-            this._debTimer = null;
-        }
-
-        pushDebounced(state, delay = 400) {
-            clearTimeout(this._debTimer);
-            this._debTimer = setTimeout(() => this.push(state), delay);
         }
 
         push(state) {
             if (this._applying) return;
             if (this._idx < this._stack.length - 1)
                 this._stack = this._stack.slice(0, this._idx + 1);
-
-            // Don't push identical states
-            const last = this._stack[this._idx];
-            if (last && last.content === state.content) return;
-
             this._stack.push(state);
             if (this._stack.length > this._max) this._stack.shift();
             this._idx = this._stack.length - 1;
@@ -580,14 +406,12 @@
         canUndo()      { return this._idx > 0; }
         canRedo()      { return this._idx < this._stack.length - 1; }
         clear()        { this._stack = []; this._idx = -1; }
-
-        get size()     { return this._stack.length; }
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  8 ▸ PAGE FACTORY  v5.0
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  8 ▸ PAGE FACTORY
+     * ───────────────────────────────────────────────── */
     class PageFactory {
         static create(pageNum, contentHTML = '<p><br></p>') {
             const page = document.createElement('div');
@@ -602,9 +426,6 @@
             content.className         = 'page-content';
             content.contentEditable   = 'true';
             content.dataset.page      = pageNum;
-            content.setAttribute('spellcheck', 'true');
-            content.setAttribute('autocorrect', 'on');
-            content.setAttribute('autocapitalize', 'sentences');
             content.innerHTML         = HTMLSanitizer.clean(contentHTML) || '<p><br></p>';
 
             const number       = document.createElement('div');
@@ -619,66 +440,69 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  9 ▸ REFLOW ENGINE  v5.0
-     *
-     *  KEY UPGRADES:
-     *  - Double-buffer measurement: reads ALL rects before ANY mutation
-     *  - Intl.Segmenter for grapheme-safe split (Hindi/Arabic/CJK)
-     *  - Line-height aware splitting (no orphan lines)
-     *  - Overflow tolerance adapts to font size
-     *  - Zero extra DOM reads during split
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  9 ▸ REFLOW ENGINE
+     *  🔧 HINDI/INDIC FIX v4.1.1:
+     *     _tokenize() now splits ONLY on ASCII space/tab,
+     *     never on Unicode whitespace or Devanagari boundaries.
+     *     Uses Intl.Segmenter when available for grapheme-safe splits.
+     * ───────────────────────────────────────────────── */
     class ReflowEngine {
         constructor(config) {
             this._cfg = config;
+
+            // 🔧 HINDI FIX 3: Use Intl.Segmenter for grapheme-aware word splitting
+            // Falls back gracefully if not supported (Safari < 16.4, older browsers)
             this._segmenter = (typeof Intl !== 'undefined' && Intl.Segmenter)
                 ? new Intl.Segmenter(undefined, { granularity: 'word' })
                 : null;
-            // Measurement probe for offline bisect
-            this._probe = null;
         }
 
-        // ── Measure overflow on a single page ──
         measure(pageEl) {
             const pc = pageEl.querySelector('.page-content');
             if (!pc) return null;
 
-            const available  = pc.offsetHeight;
-            const scrollOver = Math.max(0, pc.scrollHeight - available);
+            // pc.offsetHeight = the CSS-fixed content area height (available space).
+            const available = pc.offsetHeight;
 
             let contentH = 0;
             if (pc.children.length) {
+                // O(1): read pc top + last child bottom — single layout pass.
                 const pcTop    = pc.getBoundingClientRect().top;
                 const lastRect = pc.children[pc.children.length - 1].getBoundingClientRect();
-                contentH       = Math.max(0, lastRect.bottom - pcTop);
+                contentH       = lastRect.bottom - pcTop;
             }
 
-            const overflow   = Math.max(scrollOver, Math.max(0, contentH - available));
-            const tol        = this._adaptiveTolerance(pc);
+            // 🔧 FIX v4.6: Also check scrollHeight overflow.
+            // When large font sizes are used, content can overflow the fixed
+            // pc.offsetHeight without triggering getBoundingClientRect changes
+            // if the page-content has overflow:hidden (content is clipped but
+            // scrollHeight is still accurate). Use the larger of the two.
+            const scrollOverflow = Math.max(0, pc.scrollHeight - available);
+            const rectOverflow   = Math.max(0, contentH - available);
+            const overflow       = Math.max(rectOverflow, scrollOverflow);
+
+            const tol        = this._cfg.get('reflow.overflowTolerance') || 8;
             const isOverflow = overflow > tol;
 
-            return { available, contentH, overflow, isOverflow, scrollOver };
+            return { available, contentH, overflow, isOverflow };
         }
 
-        // ── Tolerance adapts to font size (larger fonts → larger tolerance) ──
-        _adaptiveTolerance(pc) {
-            const base = this._cfg.get('reflow.overflowTolerance') || 8;
-            try {
-                const fs = parseFloat(window.getComputedStyle(pc).fontSize) || 12;
-                return Math.max(base, fs * 0.6);
-            } catch { return base; }
-        }
-
-        // ── Split overflowing page-content ──
-        // Returns { overflow: Node[] } — already removed from pc
+        // 🔧 LINE-FLOW FIX: split() now physically removes overflow elements
+        // from pc (DOM-move). This means:
+        //  1. overflow[] contains REAL nodes already detached from pc.
+        //  2. _resolveOverflow can insertBefore() them directly — no double-remove.
+        //  3. Cursor nodes inside overflow elements remain connected (just moved).
+        //  4. splitElement() replaces the original el in-place with top/bottom halves
+        //     so cursor references inside that element are preserved via top clone.
         split(pc, available) {
             const children = Array.from(pc.children);
-            if (!children.length) return { overflow: [] };
-
-            // ── Batch-read ALL rects BEFORE any DOM mutation ──
+            // ── Read ALL rects in one batch BEFORE any DOM mutation ──────────
+            // If we read getBoundingClientRect() after a DOM change, the browser
+            // must do a forced synchronous layout first. By reading everything
+            // upfront we get all measurements from a single layout pass.
             const pcTop = pc.getBoundingClientRect().top;
-            const rects = children.map(c => c.getBoundingClientRect());
+            const rects = children.map(c => c.getBoundingClientRect()); // one layout pass
 
             const overflow = [];
 
@@ -686,237 +510,202 @@
                 const el     = children[i];
                 const bottom = rects[i].bottom - pcTop;
 
-                if (bottom <= available) continue;
+                if (bottom <= available) continue; // fits — leave in pc
 
-                // This child overflows
-                const usedH  = i > 0 ? (rects[i - 1].bottom - pcTop) : 0;
-                const remain = available - usedH;
-
-                if (this._canSplit(el) && remain > this._minLineHeight(el)) {
-                    const sp = this.splitElement(el, remain);
+                // This element overflows — decide: split it or move whole?
+                if (i === 0 && overflow.length === 0) {
+                    // First child overflows — try to split it across the boundary
+                    const sp = this.splitElement(el, available);
                     if (sp.top && sp.bottom) {
+                        // Replace el with top half in pc, push bottom to overflow
                         pc.replaceChild(sp.top, el);
                         overflow.push(sp.bottom);
                     } else {
+                        // Can't split — move whole element
                         pc.removeChild(el);
                         overflow.push(el);
                     }
-                } else {
-                    if (i === 0) {
-                        // First child can't split — move it all
-                        pc.removeChild(el);
-                        overflow.push(el);
+                } else if (i > 0) {
+                    const usedH  = rects[i - 1].bottom - pcTop;
+                    const remain = available - usedH;
+                    if (this._canSplit(el) && remain > 20) {
+                        const sp = this.splitElement(el, remain);
+                        if (sp.top && sp.bottom) {
+                            pc.replaceChild(sp.top, el);
+                            overflow.push(sp.bottom);
+                        } else {
+                            pc.removeChild(el);
+                            overflow.push(el);
+                        }
                     } else {
                         pc.removeChild(el);
                         overflow.push(el);
                     }
                 }
 
-                // Move all remaining children to overflow
-                let sib = pc.children[i];
+                // All remaining children after the split point also overflow
+                // Collect remaining siblings (they are still in pc at this point)
+                const remaining = [];
+                let sib = pc.children[i]; // re-read index since DOM changed
                 while (sib) {
                     const next = sib.nextElementSibling;
                     pc.removeChild(sib);
-                    overflow.push(sib);
+                    remaining.push(sib);
                     sib = next;
                 }
+                overflow.push(...remaining);
                 break;
             }
 
             return { overflow };
         }
 
-        // ── Split element at pixel boundary using bisect ──
-        splitElement(el, available) {
-            if (!this._canSplit(el)) return { top: null, bottom: null };
+        // 🔧 LINE-FLOW FIX: splitElement preserves cursor node identity.
+        // BEFORE: both top and bottom were fresh cloneNode() — cursor's node
+        //         inside `el` became orphaned (el was replaced by strangers).
+        // NOW:    top = el itself (mutated in place), bottom = new clone.
+        //         If cursor is inside `el`, it stays connected through the split.
+splitElement(el, available) {
+    if (!this._canSplit(el)) return { top: null, bottom: null };
 
-            const segments = this._extractSegments(el);
-            if (segments.length < 2) return { top: null, bottom: null };
+    const segments = this._extractSegments(el);
+    if (segments.length < 4) return { top: null, bottom: null };
 
-            // Create offline probe
-            const probe = this._getProbe(el);
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none';
+    const probe = el.cloneNode(false);
+    const cs    = window.getComputedStyle(el);
+    probe.style.cssText   = cs.cssText;
+    probe.style.position  = 'static';
+    probe.style.width     = el.offsetWidth + 'px';
+    probe.style.height    = 'auto';
+    probe.style.maxHeight = 'none';
+    wrapper.appendChild(probe);
+    document.body.appendChild(wrapper);
 
-            // Binary search for best split point
-            let lo = 1, hi = segments.length, best = 0;
-            while (lo <= hi) {
-                const mid = (lo + hi) >> 1;
-                probe.innerHTML = this._segmentsToHTML(segments, 0, mid);
-                if (probe.offsetHeight <= available) { best = mid; lo = mid + 1; }
-                else { hi = mid - 1; }
+    let lo = 1, hi = segments.length, best = 0;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        probe.innerHTML = this._segmentsToHTML(segments, 0, mid);
+        if (probe.offsetHeight <= available) { best = mid; lo = mid + 1; }
+        else { hi = mid - 1; }
+    }
+    document.body.removeChild(wrapper);
+
+    if (best < 2 || best > segments.length - 2)
+        return { top: null, bottom: null };
+
+    const bottom = el.cloneNode(false);
+    bottom.innerHTML = this._segmentsToHTML(segments, best, segments.length);
+    el.innerHTML = this._segmentsToHTML(segments, 0, best);
+
+    return { top: el, bottom };
+}
+
+_extractSegments(el) {
+    const segments = [];
+    const walker   = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node;
+
+    while ((node = walker.nextNode())) {
+        const text = node.nodeValue;
+        if (!text) continue;
+
+        const wrappers = [];
+        let cur = node.parentNode;
+        while (cur && cur !== el) {
+            if (cur.nodeType === Node.ELEMENT_NODE) wrappers.unshift(cur);
+            cur = cur.parentNode;
+        }
+
+        let buf = '';
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (ch === ' ' || ch === '\t') {
+                if (buf) { segments.push({ text: buf, wrappers }); buf = ''; }
+                segments.push({ text: ch, wrappers });
+            } else {
+                buf += ch;
             }
-
-            this._releaseProbe();
-
-            // Need at least some content in top AND bottom
-            if (best < 1 || best >= segments.length) return { top: null, bottom: null };
-
-            const bottom = el.cloneNode(false);
-            bottom.innerHTML = this._segmentsToHTML(segments, best, segments.length);
-            el.innerHTML     = this._segmentsToHTML(segments, 0, best);
-
-            return { top: el, bottom };
         }
+        if (buf) segments.push({ text: buf, wrappers });
+    }
 
-        _getProbe(el) {
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none;z-index:-1;';
-            const probe = el.cloneNode(false);
-            const cs    = window.getComputedStyle(el);
-            probe.style.cssText   = cs.cssText;
-            probe.style.position  = 'static';
-            probe.style.width     = el.offsetWidth + 'px';
-            probe.style.height    = 'auto';
-            probe.style.maxHeight = 'none';
-            wrapper.appendChild(probe);
-            document.body.appendChild(wrapper);
-            this._probe = { wrapper, probe };
-            return probe;
-        }
+    return segments;
+}
 
-        _releaseProbe() {
-            if (this._probe?.wrapper) {
-                document.body.removeChild(this._probe.wrapper);
-                this._probe = null;
-            }
-        }
+_wrapWithAncestors(text, wrappers) {
+    let html = this._escapeHTML(text);
+    for (let i = wrappers.length - 1; i >= 0; i--) {
+        const w   = wrappers[i];
+        const tag = w.tagName.toLowerCase();
+        let attr  = '';
+        if (w.getAttribute('style')) attr += ` style="${this._escapeAttr(w.getAttribute('style'))}"`;
+        if (w.getAttribute('class')) attr += ` class="${this._escapeAttr(w.getAttribute('class'))}"`;
+        if (w.getAttribute('lang'))  attr += ` lang="${this._escapeAttr(w.getAttribute('lang'))}"`;
+        if (w.getAttribute('dir'))   attr += ` dir="${this._escapeAttr(w.getAttribute('dir'))}"`;
+        html = `<${tag}${attr}>${html}</${tag}>`;
+    }
+    return html;
+}
 
-        // ── Extract segments (Unicode-safe) ──
-        _extractSegments(el) {
-            const segments = [];
-            const walker   = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-            let node;
+_segmentsToHTML(segments, start, end) {
+    return segments
+        .slice(start, end)
+        .map(seg => seg.wrappers.length === 0
+            ? this._escapeHTML(seg.text)
+            : this._wrapWithAncestors(seg.text, seg.wrappers))
+        .join('');
+}
 
-            while ((node = walker.nextNode())) {
-                const text = node.nodeValue;
-                if (!text) continue;
+_escapeHTML(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
-                const wrappers = [];
-                let cur = node.parentNode;
-                while (cur && cur !== el) {
-                    if (cur.nodeType === Node.ELEMENT_NODE) wrappers.unshift(cur);
-                    cur = cur.parentNode;
-                }
+_escapeAttr(str) {
+    return str.replace(/"/g, '&quot;');
+}
 
-                // Use Intl.Segmenter for grapheme-aware word splitting (Hindi, Arabic, CJK, etc.)
-                if (this._segmenter) {
-                    const segs = [...this._segmenter.segment(text)];
-                    let buf = '';
-                    for (const seg of segs) {
-                        if (seg.isWordLike === false && (seg.segment === ' ' || seg.segment === '\t')) {
-                            if (buf) { segments.push({ text: buf, wrappers }); buf = ''; }
-                            segments.push({ text: seg.segment, wrappers });
-                        } else {
-                            buf += seg.segment;
-                        }
-                    }
-                    if (buf) segments.push({ text: buf, wrappers });
+        // 🔧 HINDI FIX 3: Unicode-safe tokenizer
+        // Splits ONLY on ASCII space (U+0020) and tab (U+0009).
+        // This preserves:
+        //   - Devanagari conjuncts (क्ष, ज्ञ, etc.)
+        //   - Matras / vowel signs (ा ि ी ु ू े ै ो ौ)
+        //   - Zero-width joiners (U+200D) used in complex scripts
+        //   - Arabic, Bengali, Tamil, Gujarati clusters
+        // The old /\s/ regex matched U+00A0, U+2000–U+200A etc.
+        // which could split inside a Devanagari word boundary.
+        _tokenize(html) {
+            const tokens = [];
+            let buf = '', inTag = false;
+            for (let i = 0; i < html.length; i++) {
+                const ch = html[i];
+                if (ch === '<')  { inTag = true;  buf += ch; continue; }
+                if (ch === '>')  { inTag = false; buf += ch; continue; }
+                if (inTag)       { buf += ch; continue; }
+                // Split ONLY on plain ASCII space or tab — nothing else
+                if (ch === ' ' || ch === '\t') {
+                    if (buf) { tokens.push(buf); buf = ''; }
+                    tokens.push(ch);
                 } else {
-                    // Fallback: ASCII space split only (safe for Devanagari)
-                    let buf = '';
-                    for (let i = 0; i < text.length; i++) {
-                        const ch = text[i];
-                        if (ch === ' ' || ch === '\t') {
-                            if (buf) { segments.push({ text: buf, wrappers }); buf = ''; }
-                            segments.push({ text: ch, wrappers });
-                        } else {
-                            buf += ch;
-                        }
-                    }
-                    if (buf) segments.push({ text: buf, wrappers });
+                    buf += ch;
                 }
             }
-
-            return segments;
-        }
-
-        _segmentsToHTML(segments, start, end) {
-            return segments
-                .slice(start, end)
-                .map(seg => seg.wrappers.length === 0
-                    ? this._escapeHTML(seg.text)
-                    : this._wrapWithAncestors(seg.text, seg.wrappers))
-                .join('');
-        }
-
-        _wrapWithAncestors(text, wrappers) {
-            let html = this._escapeHTML(text);
-            for (let i = wrappers.length - 1; i >= 0; i--) {
-                const w   = wrappers[i];
-                const tag = w.tagName.toLowerCase();
-                let attr  = '';
-                ['style','class','lang','dir','data-wf-enter-ph'].forEach(a => {
-                    const v = w.getAttribute(a);
-                    if (v != null) attr += ` ${a}="${this._escapeAttr(v)}"`;
-                });
-                html = `<${tag}${attr}>${html}</${tag}>`;
-            }
-            return html;
-        }
-
-        _escapeHTML(str) {
-            return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        _escapeAttr(str) {
-            return (str || '').replace(/"/g, '&quot;');
+            if (buf) tokens.push(buf);
+            return tokens;
         }
 
         _canSplit(el) {
-            if (!el || !['P', 'DIV', 'BLOCKQUOTE', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName)) return false;
-            if (el.querySelector('img,table,canvas,video,iframe')) return false;
-            return el.textContent.replace(/\u200B/g, '').trim().length > 0;
-        }
-
-        _minLineHeight(el) {
-            try {
-                const lh = parseFloat(window.getComputedStyle(el).lineHeight);
-                return isNaN(lh) ? 20 : lh;
-            } catch { return 20; }
+            if (!el || !['P', 'DIV', 'BLOCKQUOTE', 'LI'].includes(el.tagName)) return false;
+            if (el.querySelector('img,table,canvas,video')) return false;
+            return el.textContent.trim().length > 20;
         }
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  10 ▸ CLIPBOARD MANAGER  v5.0
-     *  Universal paste: handles all source types + images
-     * ═══════════════════════════════════════════════════════ */
-    class ClipboardManager {
-
-        static async extractFromEvent(e) {
-            const cd = e.clipboardData || window.clipboardData;
-            if (!cd) return { html: '', text: '', hasImage: false };
-
-            const hasImage = Array.from(cd.items || []).some(i => i.type.startsWith('image/'));
-            let html = cd.getData('text/html') || '';
-            let text = cd.getData('text/plain') || '';
-
-            return { html, text, hasImage };
-        }
-
-        // Build clipboard with multiple formats for copy/cut
-        static async writeToClipboard(text, html) {
-            try {
-                if (navigator.clipboard?.write) {
-                    const items = [new ClipboardItem({
-                        'text/plain': new Blob([text], { type: 'text/plain' }),
-                        'text/html':  new Blob([html],  { type: 'text/html'  }),
-                    })];
-                    await navigator.clipboard.write(items);
-                    return true;
-                }
-            } catch (_) {}
-            // Fallback: execCommand
-            try {
-                document.execCommand('copy');
-                return true;
-            } catch (_) { return false; }
-        }
-    }
-
-
-    /* ═══════════════════════════════════════════════════════
-     *  11 ▸ MAIN CONTROLLER  v5.0
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  10 ▸ MAIN CONTROLLER
+     * ───────────────────────────────────────────────── */
     class MSWordFlowController {
 
         constructor(options = {}) {
@@ -930,32 +719,26 @@
             this._version  = new VersionManager('wf_engine_ver');
 
             this._state = {
-                isReflowing:       false,
-                isPaperChanging:   false,
-                isPasting:         false,
-                currentPage:       1,
-                currentPaperSize:  'a4',
-                lastKnownContent:  null,
-                isSelecting:       false,
+                isReflowing:      false,
+                isPaperChanging:  false,
+                isPasting:        false,
+                currentPage:      1,
+                currentPaperSize: 'a4',
             };
-
-            this._reflow_queue  = [];   // { fromPage, resolve }
-            this._reflow_running = false;
+            this._pendingReflow = null;  // queued reflow page number
 
             this._timers        = {};
             this._initialized   = false;
             this._eventsBound   = false;
             this._imeComposing  = false;
-            this._imeBuffer     = '';
         }
 
         static get DEFAULTS() {
             return {
-                reflow:   { debounceMs: 60, overflowTolerance: 8, maxIterations: 60, maxPages: 1000, useRAF: true },
-                history:  { maxStates: 200 },
+                reflow:   { debounceMs: 80, overflowTolerance: 8, maxIterations: 50, maxPages: 1000, useRAF: false },
+                history:  { maxStates: 100 },
                 paper:    { size: 'a4', marginPx: 96 },
                 autoSave: { intervalMs: 30000 },
-                paste:    { allowImages: true, stripFormatting: false },
             };
         }
 
@@ -969,11 +752,14 @@
         /* ── Plugin API ─────────────────────────────── */
         use(plugin) {
             if (!plugin?.name) { console.warn('[WordFlow] Plugin needs a name'); return this; }
-            if (this._plugins.has(plugin.name)) return this;
+            if (this._plugins.has(plugin.name)) { console.warn(`[WordFlow] Plugin "${plugin.name}" already installed`); return this; }
             try {
                 plugin.install?.(this);
                 this._plugins.set(plugin.name, plugin);
-            } catch (e) { console.error(`[WordFlow] Plugin "${plugin.name}" install error:`, e); }
+                console.log(`[WordFlow] Plugin "${plugin.name}" installed`);
+            } catch (e) {
+                console.error(`[WordFlow] Plugin "${plugin.name}" install error:`, e);
+            }
             return this;
         }
 
@@ -984,6 +770,7 @@
                 const pc      = page.querySelector('.page-content');
                 const html    = pc?.innerHTML || '<p><br></p>';
                 const isBreak = page.dataset.wfManualBreak === '1';
+                // Manual break wali page ka marker alag — restore pe pehchan ho
                 return isBreak
                     ? '<div class="page-break-marker wf-manual" style="page-break-after:always;"></div>' + html
                     : html;
@@ -995,16 +782,18 @@
             const c = this.getContainer();
             if (!c) return;
 
-            const BREAK      = '<div class="page-break-marker" style="page-break-after:always;"></div>';
-            const MANUAL_PFX = '<div class="page-break-marker wf-manual" style="page-break-after:always;"></div>';
-            const parts      = raw.split(BREAK);
-            c.innerHTML      = '';
+            const BREAK        = '<div class="page-break-marker" style="page-break-after:always;"></div>';
+            const MANUAL_PFX   = '<div class="page-break-marker wf-manual" style="page-break-after:always;"></div>';
+            const parts        = raw.split(BREAK);
+            c.innerHTML        = '';
 
             let pageIdx = 1;
             parts.forEach(part => {
+                // Part manual break ke saath shuru ho sakta hai
                 const isManual = part.startsWith(MANUAL_PFX) || part.includes('wf-manual');
                 const html     = isManual ? part.replace(MANUAL_PFX, '').trim() : part.trim();
-                const page     = PageFactory.create(pageIdx++, html || '<p><br></p>');
+
+                const page = PageFactory.create(pageIdx++, html || '<p><br></p>');
                 if (isManual) page.dataset.wfManualBreak = '1';
                 c.appendChild(page);
             });
@@ -1012,25 +801,30 @@
             this._bus.emit('content:loaded');
         }
 
-        /* ── Public reflow API ──────────────────────── */
-        async reflowAll()            { return this._doReflow(1); }
-        async reflowFrom(pageNum)    { return this._doReflow(pageNum); }
-        async performReflow()        { return this.reflowAll(); }
-        async performReflowFromPage(n) { return this.reflowFrom(n); }
-        updateHiddenContent()        { this._syncHiddenField(); }
-        updateUI()                   { this._updateStatusBar(); this._syncHiddenField(); }
-        consolidatePages(fromPage)   { return this._consolidatePages(fromPage); }
-        reIndexPages()               { return this._reIndexPages(); }
-        loadState(state)             { return this._loadState(state); }
-        saveCursorPosition()         { return CursorManager.save(this.getContainer()); }
-        restoreCursorPosition(saved) { return CursorManager.restore(saved, this.getContainer()); }
-        measurePage(pageEl)          { return this._engine.measure(pageEl); }
-        createPage(pageNum, html)    { return PageFactory.create(pageNum, html); }
+        /* ── Public reflow ──────────────────────────── */
+        async reflowAll()            { return this._doReflow(1, null); }
+        async reflowFrom(pageNum)    { return this._doReflow(pageNum, null); }
+
+        /* ── Backward-Compatibility Aliases ─────────── */
+        async performReflow()                { return this.reflowAll(); }
+        async performReflowFromPage(pageNum) { return this.reflowFrom(pageNum); }
+        updateHiddenContent()                { this._syncHiddenField(); }
+        updateUI()                           { this._updateStatusBar(); this._syncHiddenField(); }
+        consolidatePages(fromPage = 1)       { return this._consolidatePages(fromPage); }
+        reIndexPages()                       { return this._reIndexPages(); }
+        loadState(state)                     { return this._loadState(state); }
+        saveCursorPosition()                 { return CursorManager.save(this.getContainer()); }
+        restoreCursorPosition(saved)         { return CursorManager.restore(saved, this.getContainer()); }
+        measurePage(pageEl)                  { return this._engine.measure(pageEl); }
+        createPage(pageNum, html)            { return PageFactory.create(pageNum, html); }
 
         /* ── Paper size ─────────────────────────────── */
         handlePaperSizeChange(newSize) {
             if (!newSize || newSize === this._state.currentPaperSize) return;
-            if (!PaperRegistry.has(newSize)) { console.warn(`[WordFlow] Unknown paper "${newSize}"`); return; }
+            if (!PaperRegistry.has(newSize)) {
+                console.warn(`[WordFlow] Unknown paper "${newSize}". Use PaperRegistry.add() first.`);
+                return;
+            }
 
             const dims = PaperRegistry.get(newSize);
             this._config.merge({ paper: { size: newSize, marginPx: dims.marginPx } });
@@ -1052,31 +846,16 @@
 
         /* ── Init ───────────────────────────────────── */
         init() {
-            if (this._initialized) return this;
+            if (this._initialized) { console.warn('[WordFlow] Already initialized'); return this; }
             this._initialized = true;
 
             this._version.runMigrations(ENGINE_VERSION);
-            this._injectStyles();
 
-            // IME composition tracking
-            document.addEventListener('compositionstart', (e) => {
-                this._imeComposing = true;
-                this._imeBuffer    = '';
-            });
-            document.addEventListener('compositionupdate', (e) => {
-                this._imeBuffer = e.data || '';
-            });
-            document.addEventListener('compositionend', (e) => {
-                this._imeComposing = false;
-                this._imeBuffer    = '';
-                // Trigger reflow after IME commit
-                const pc = document.activeElement;
-                if (pc?.classList.contains('page-content')) {
-                    const page    = pc.closest('.editor-page');
-                    const pageNum = parseInt(page?.dataset.page, 10) || 1;
-                    this._scheduleReflow(pageNum);
-                }
-            });
+            // Inject merge animation CSS once
+            this._injectMergeStyles();
+
+            document.addEventListener('compositionstart', () => { this._imeComposing = true;  });
+            document.addEventListener('compositionend',   () => { this._imeComposing = false; });
 
             this._bindEvents();
 
@@ -1087,6 +866,7 @@
             if (hf?.value.trim()) this.deserialize(hf.value.trim());
 
             setTimeout(() => this._doReflow(1), 100);
+
             this._setupAutoSave();
             this._setupErrorBoundary();
             this._bus.emit('engine:ready', { version: ENGINE_VERSION });
@@ -1094,73 +874,45 @@
             return this;
         }
 
-        /* ── CSS injection ──────────────────────────── */
-        _injectStyles() {
-            if (document.getElementById('wf-v5-styles')) return;
+        /* ── Inject merge CSS ───────────────────────── */
+        _injectMergeStyles() {
+            if (document.getElementById('wf-merge-styles')) return;
             const style = document.createElement('style');
-            style.id = 'wf-v5-styles';
+            style.id = 'wf-merge-styles';
             style.textContent = `
-                /* ── Page transitions ── */
-                .editor-page {
-                    transition: opacity 0.12s ease;
-                    will-change: auto;
-                }
-                .wf-page-entering {
-                    animation: wf-page-in 180ms cubic-bezier(.2,.8,.3,1) both;
-                }
-                .wf-page-removing {
-                    animation: wf-page-out 140ms cubic-bezier(.4,0,1,1) both;
-                    pointer-events: none;
-                    overflow: hidden;
-                }
-                @keyframes wf-page-in {
-                    from { opacity: 0; transform: translateY(8px) scaleY(0.97); }
-                    to   { opacity: 1; transform: none; }
-                }
-                @keyframes wf-page-out {
-                    from { opacity: 1; max-height: 200px; }
-                    to   { opacity: 0; max-height: 0; margin: 0; padding: 0; }
+                /* Page merge fade-out animation */
+                @keyframes wf-page-merge-out {
+                    0%   { opacity: 1; transform: scaleY(1);   max-height: 200px; }
+                    60%  { opacity: 0; transform: scaleY(0.6); max-height: 40px; }
+                    100% { opacity: 0; transform: scaleY(0);   max-height: 0;    }
                 }
 
-                /* ── Content merge flash ── */
-                @keyframes wf-merge-flash {
-                    0%   { background: rgba(37,99,235,0.12); }
-                    100% { background: transparent; }
-                }
-                .wf-merge-flash {
-                    animation: wf-merge-flash 300ms ease-out forwards;
-                }
-
-                /* ── Smooth content in ── */
+                /* Incoming content fade-in */
                 @keyframes wf-content-in {
-                    from { opacity: 0.6; }
+                    from { opacity: 0; }
                     to   { opacity: 1; }
                 }
+
+                /* Merge flash highlight on cursor line */
+                @keyframes wf-cursor-flash {
+                    0%   { background: rgba(37,99,235,0.18); }
+                    100% { background: transparent; }
+                }
+
+                .wf-merging {
+                    animation: wf-page-merge-out 180ms cubic-bezier(.4,0,.2,1) forwards;
+                    overflow: hidden;
+                    pointer-events: none;
+                }
+
                 .wf-content-merged {
-                    animation: wf-content-in 120ms ease-out both;
+                    animation: wf-content-in 160ms ease-out both;
                 }
 
-                /* ── Selection across pages ── */
-                .page-content::selection { background: rgba(66,130,195,0.3); }
-
-                /* ── IME composition indicator ── */
-                .page-content:focus {
-                    outline: none;
-                    caret-color: #1a56db;
-                }
-
-                /* ── Smooth scrollbar ── */
-                .editor-content {
-                    scroll-behavior: smooth;
-                }
-
-                /* ── Page content smooth height ── */
-                .page-content {
-                    transition: none; /* reflow handles this */
-                    word-break: break-word;
-                    overflow-wrap: break-word;
-                    /* RTL support */
-                    unicode-bidi: plaintext;
+                /* Highlight the merge point briefly */
+                .wf-merge-flash {
+                    animation: wf-cursor-flash 350ms ease-out forwards;
+                    border-radius: 2px;
                 }
             `;
             document.head.appendChild(style);
@@ -1171,16 +923,15 @@
             if (this._eventsBound) return;
             this._eventsBound = true;
 
-            document.addEventListener('input',    this._onInput.bind(this));
-            document.addEventListener('paste',    this._onPaste.bind(this), true);
-            document.addEventListener('keydown',  this._onKeydown.bind(this), true);
-            document.addEventListener('keyup',    this._onKeyup.bind(this));
-            document.addEventListener('focusin',  this._onFocusIn.bind(this));
-            document.addEventListener('mouseup',  this._onMouseUp.bind(this));
-            document.addEventListener('drop',     this._onDrop.bind(this), true);
+            this._bInput   = this._onInput.bind(this);
+            this._bPaste   = this._onPaste.bind(this);
+            this._bKeydown = this._onKeydown.bind(this);
+            this._bFocus   = this._onFocusIn.bind(this);
 
-            // Selection change for multi-page selection tracking
-            document.addEventListener('selectionchange', this._onSelectionChange.bind(this));
+            document.addEventListener('input',   this._bInput);
+            document.addEventListener('paste',   this._bPaste, true);
+            document.addEventListener('keydown', this._bKeydown, true);
+            document.addEventListener('focusin', this._bFocus);
 
             const sel = document.getElementById('paperSize');
             if (sel) sel.addEventListener('change', e => this.handlePaperSizeChange(e.target.value));
@@ -1192,41 +943,11 @@
             if (page) this._state.currentPage = parseInt(page.dataset.page, 10) || 1;
         }
 
-        _onMouseUp(e) {
-            this._state.isSelecting = false;
-            this._checkMultiPageSelection();
-        }
-
-        _onKeyup(e) {
-            if (e.shiftKey) this._checkMultiPageSelection();
-        }
-
-        _onSelectionChange() {
-            if (this._state.isSelecting) this._checkMultiPageSelection();
-        }
-
-        // Detect + handle multi-page selections (visual only)
-        _checkMultiPageSelection() {
-            const sel = window.getSelection();
-            if (!sel?.rangeCount || sel.isCollapsed) return;
-            // Selection spans multiple page-content elements?
-            const start = CursorManager._ancestorPC(sel.getRangeAt(0).startContainer);
-            const end   = CursorManager._ancestorPC(sel.getRangeAt(0).endContainer);
-            if (start && end && start !== end) {
-                this._bus.emit('selection:multipage', { start, end });
-            }
-        }
-
-        /* ═══════════════════════════════════════════════
-         *  INPUT HANDLER  v5.0
-         *  - Batches rapid keystrokes
-         *  - IME-aware (skips during composition)
-         *  - Large paste detection → full reflow from page 1
-         * ═══════════════════════════════════════════════ */
+        /* ── Input ──────────────────────────────────── */
         _onInput(e) {
             if (!e.target?.classList.contains('page-content')) return;
             if (this._state.isPaperChanging || this._state.isPasting) return;
-            if (this._imeComposing) return; // IME compositionend handles reflow
+            if (this._imeComposing) return;
 
             const page = e.target.closest('.editor-page');
             if (!page) return;
@@ -1234,87 +955,35 @@
             const pageNum = parseInt(page.dataset.page, 10) || 1;
             this._state.currentPage = pageNum;
 
-            this._scheduleReflow(pageNum);
-
-            // Debounced undo snapshot (groups rapid typing into single undo step)
-            this._undoRedo.pushDebounced({
-                content:   this.serialize(),
-                pageNum,
-                cursorOff: CursorManager.save(this.getContainer()),
-            }, 600);
-        }
-
-        _scheduleReflow(pageNum) {
             clearTimeout(this._timers.input);
             this._timers.input = setTimeout(async () => {
                 if (this._state.isPasting) return;
-                await this._doReflow(pageNum);
+
+                await this._doReflow(pageNum, null);
+
                 this._syncHiddenField();
                 this._bus.emit('content:changed');
-            }, Math.max(this._config.get('reflow.debounceMs'), 60));
+            // 🔧 FIX v4.6: Use Math.max(debounceMs, 100) for layout stability
+            }, Math.max(this._config.get('reflow.debounceMs'), 100));
         }
 
-        /* ═══════════════════════════════════════════════
-         *  PASTE HANDLER  v5.0
-         *  Universal: Word, GDocs, LibreOffice, plain text
-         *  + Image paste support
-         * ═══════════════════════════════════════════════ */
+        /* ── Paste ──────────────────────────────────── */
         _onPaste(e) {
-            if (!e.target?.classList.contains('page-content')) return;
-            if (this._state.isPasting) { e.preventDefault(); return; }
-
-            e.preventDefault();
+            if (this._state.isPasting) return;
             this._state.isPasting = true;
             clearTimeout(this._timers.input);
             this._pushUndoSnapshot();
 
-            ClipboardManager.extractFromEvent(e).then(async ({ html, text, hasImage }) => {
+            setTimeout(async () => {
                 const pc = document.activeElement;
-                if (!pc?.classList.contains('page-content')) {
-                    this._state.isPasting = false;
-                    return;
-                }
+                if (!pc?.classList.contains('page-content')) { this._state.isPasting = false; return; }
 
-                const savedCursor = CursorManager.save(this.getContainer());
-
-                // Handle image paste
-                if (hasImage && this._config.get('paste.allowImages')) {
-                    await this._handleImagePaste(e.clipboardData, pc);
-                    this._state.isPasting = false;
-                    await this._doReflow(this._state.currentPage);
-                    this._syncHiddenField();
-                    this._updateStatusBar();
-                    this._bus.emit('content:pasted');
-                    return;
-                }
-
-                // Strip formatting mode
-                if (this._config.get('paste.stripFormatting')) {
-                    html = '';
-                }
-
-                // Normalize pasted content
-                let normalized;
-                if (html) {
-                    normalized = HTMLSanitizer.normalizeFromPaste(html, text);
-                } else if (text) {
-                    normalized = HTMLSanitizer._plainToHTML(text);
-                } else {
-                    this._state.isPasting = false;
-                    return;
-                }
-
-                // Insert at cursor position (not replace all)
-                this._insertHTMLAtCursor(normalized, pc);
-
-                // Reflow from current page
-                const page    = pc.closest('.editor-page');
-                const pageNum = parseInt(page?.dataset.page, 10) || 1;
+                const cleaned = HTMLSanitizer.clean(HTMLSanitizer.normalizeFromPaste(pc.innerHTML));
+                pc.innerHTML  = cleaned || '<p><br></p>';
 
                 this._preDistribute(pc);
-                await this._doReflow(pageNum);
+                await this._doReflow(1);
 
-                // Move cursor to end of pasted content
                 const allPCs = Array.from(this.getContainer().querySelectorAll('.page-content'));
                 const lastWithContent = [...allPCs].reverse().find(p => p.textContent.trim()) || allPCs[allPCs.length - 1];
                 if (lastWithContent) CursorManager.setCursorAtEnd(lastWithContent);
@@ -1326,90 +995,15 @@
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     this._state.isPasting = false;
                 }));
-            });
+            }, 20);
         }
 
-        // Insert HTML at cursor position (proper DOM insertion, not innerHTML replace)
-        _insertHTMLAtCursor(html, pc) {
-            const sel = window.getSelection();
-            if (!sel?.rangeCount) {
-                pc.innerHTML = HTMLSanitizer.clean(html) || '<p><br></p>';
-                return;
-            }
-
-            const range = sel.getRangeAt(0);
-
-            // If range is in a page-content, insert there; otherwise append
-            const targetPC = CursorManager._ancestorPC(range.startContainer);
-            if (!targetPC || targetPC !== pc) {
-                // Append to end of current page
-                const lastP = pc.querySelector('p:last-child');
-                if (lastP) {
-                    const temp = document.createElement('div');
-                    temp.innerHTML = HTMLSanitizer.clean(html);
-                    while (temp.firstChild) {
-                        pc.appendChild(temp.firstChild);
-                    }
-                } else {
-                    pc.innerHTML = HTMLSanitizer.clean(html) || '<p><br></p>';
-                }
-                return;
-            }
-
-            // Delete any selected content first
-            if (!range.collapsed) range.deleteContents();
-
-            // Create temp container and insert children
-            const temp = document.createElement('div');
-            temp.innerHTML = HTMLSanitizer.clean(html);
-
-            const frag = document.createDocumentFragment();
-            while (temp.firstChild) frag.appendChild(temp.firstChild);
-
-            range.insertNode(frag);
-
-            // Collapse selection to end
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
-
-        // Handle image paste
-        async _handleImagePaste(clipboardData, pc) {
-            const items = Array.from(clipboardData.items || []);
-            for (const item of items) {
-                if (!item.type.startsWith('image/')) continue;
-                const file = item.getAsFile();
-                if (!file) continue;
-
-                await new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const img     = document.createElement('img');
-                        img.src       = ev.target.result;
-                        img.style.maxWidth = '100%';
-                        img.style.height   = 'auto';
-                        img.style.display  = 'block';
-                        img.style.margin   = '8px 0';
-
-                        const p = document.createElement('p');
-                        p.appendChild(img);
-                        pc.appendChild(p);
-                        resolve();
-                    };
-                    reader.readAsDataURL(file);
-                });
-                break; // Only first image
-            }
-        }
-
-        // Pre-distribute pasted content to next pages
         _preDistribute(startPC) {
             const startPage = startPC.closest('.editor-page');
             if (!startPage) return;
 
             let curPC = startPC, curPage = startPage, limit = 0;
-            while (limit++ < 20000) {
+            while (limit++ < 10000) {
                 const m = this._engine.measure(curPage);
                 if (!m?.isOverflow) break;
 
@@ -1431,67 +1025,51 @@
             }
         }
 
-        /* ── Drop handler ───────────────────────────── */
-        _onDrop(e) {
-            const pc = e.target?.closest?.('.page-content');
-            if (!pc) return;
 
-            const html = e.dataTransfer?.getData('text/html') || '';
-            const text = e.dataTransfer?.getData('text/plain') || '';
+        /* ══════════════════════════════════════════════
+         *  ⚡ KEYBOARD — POWER UPGRADE
+         * ══════════════════════════════════════════════ */
 
-            if (html || text) {
-                e.preventDefault();
-                const normalized = html
-                    ? HTMLSanitizer.normalizeFromPaste(html, text)
-                    : HTMLSanitizer._plainToHTML(text);
-
-                setTimeout(async () => {
-                    this._pushUndoSnapshot();
-                    this._preDistribute(pc);
-                    await this._doReflow(this._state.currentPage);
-                    this._syncHiddenField();
-                    this._bus.emit('content:changed');
-                }, 0);
-            }
-        }
-
-
-        /* ══════════════════════════════════════════════════
-         *  KEYBOARD HANDLER  v5.0
-         * ══════════════════════════════════════════════════ */
         _onKeydown(e) {
             const ctrl = e.ctrlKey || e.metaKey;
 
-            // ── BACKSPACE ──
+            /* ── BACKSPACE ─────────────────────────── */
             if (e.key === 'Backspace') {
                 if (this._imeComposing) return;
-                if (this._handleBackspace()) { e.preventDefault(); e.stopImmediatePropagation(); }
+                if (this._handleBackspace()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
                 return;
             }
 
-            // ── DELETE FORWARD ──
+            /* ── DELETE FORWARD ────────────────────── */
             if (e.key === 'Delete') {
                 if (this._imeComposing) return;
-                if (this._handleDeleteForward()) { e.preventDefault(); e.stopImmediatePropagation(); }
+                if (this._handleDeleteForward()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
                 return;
             }
 
-            // ── ENTER ──
+            /* ── ENTER ─────────────────────────────── */
             if (e.key === 'Enter' && !this._imeComposing) {
-                if (e.shiftKey) return; // Shift+Enter → browser handles <br>
+                // Shift+Enter = line break inside same <p> — let browser handle
+                if (e.shiftKey) return;
                 this._handleEnter(e);
                 return;
             }
 
-            // ── UNDO ──
-            if (ctrl && e.key === 'z' && !e.shiftKey) {
+            /* ── UNDO ──────────────────────────────── */
+            if (ctrl && e.key === 'z') {
                 e.preventDefault();
                 const s = this._undoRedo.undo();
                 if (s) { this._loadState(s); this._undoRedo.stopApplying(); }
                 return;
             }
 
-            // ── REDO ──
+            /* ── REDO ──────────────────────────────── */
             if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
                 e.preventDefault();
                 const s = this._undoRedo.redo();
@@ -1499,24 +1077,19 @@
                 return;
             }
 
-            // ── SELECT ALL ──
+            /* ── SELECT ALL ────────────────────────── */
             if (ctrl && e.key === 'a') {
                 if (this._handleSelectAll()) { e.preventDefault(); e.stopImmediatePropagation(); }
                 return;
             }
 
-            // ── CUT ──
-            if (ctrl && e.key === 'x') {
-                this._handleCut(e);
-                return;
-            }
-
-            // ── CTRL+HOME / CTRL+END ──
+            /* ── CTRL+HOME / CTRL+END ──────────────── */
             if (ctrl && e.key === 'Home') {
                 e.preventDefault();
                 CursorManager.setCursorAtStart(this.getContainer()?.querySelector('.page-content[data-page="1"]'));
                 return;
             }
+
             if (ctrl && e.key === 'End') {
                 e.preventDefault();
                 const all = this.getContainer()?.querySelectorAll('.page-content');
@@ -1524,98 +1097,150 @@
                 return;
             }
 
-            // ── PAGE UP / DOWN ──
+            /* ── CTRL+PAGE UP/DOWN ─────────────────── */
             if (ctrl && (e.key === 'PageUp' || e.key === 'PageDown')) {
                 e.preventDefault();
                 const curr = document.activeElement?.closest('.editor-page');
                 if (!curr) return;
                 const n    = parseInt(curr.dataset.page, 10);
                 const dest = e.key === 'PageUp' ? n - 1 : n + 1;
-                const destPC = this.getContainer()?.querySelector(`.page-content[data-page="${dest}"]`);
-                if (destPC) {
-                    destPC.focus();
-                    CursorManager.setCursorAtStart(destPC);
-                }
-                return;
-            }
-
-            // ── Tab → indent ──
-            if (e.key === 'Tab' && !ctrl) {
-                const pc = document.activeElement;
-                if (pc?.classList.contains('page-content')) {
-                    e.preventDefault();
-                    document.execCommand('insertHTML', false, '&emsp;');
-                }
+                this.getContainer()?.querySelector(`.page-content[data-page="${dest}"]`)?.focus();
                 return;
             }
         }
 
 
-        /* ══════════════════════════════════════════════════
-         *  BACKSPACE  v5.0
-         *  - Single-press: move cursor AND delete char
-         *  - Handles blank page removal
-         *  - Handles merge of paragraphs across page boundary
-         * ══════════════════════════════════════════════════ */
+        /* ══════════════════════════════════════════════
+         *  ⚡ BACKSPACE — v4.4 "SINGLE-PRESS" EDITION
+         *
+         *  BUG (v4.3):
+         *  Page boundary pe Backspace → cursor prev page ke end pe jaata tha
+         *  lekin character DELETE nahi hota tha (return false → browser ko
+         *  diya lekin focus already prev page par tha, isliye browser ka
+         *  backspace wahan kaam nahi karta tha reliably).
+         *  Result: User ko 2 baar Backspace dabaana padta tha — pehle cursor
+         *  move, phir character delete. Text aur cursor sath-sath nahi jaate the.
+         *
+         *  FIX (v4.4):
+         *  Page boundary par hum KHUD character delete karte hain:
+         *
+         *  Case A — Prev page mein text hai:
+         *    1. Prev page ka last text node dhundo.
+         *    2. Agar last char exist karta hai → Range banao jo sirf wo
+         *       ek character cover kare, phir range.deleteContents() se
+         *       hata do. Cursor automatically wahan set ho jaata hai.
+         *    3. Agar prev page sirf empty <p> hai → ise blank page
+         *       jaisa treat karo (Case B).
+         *    4. Reflow trigger karo.
+         *    5. return TRUE (preventDefault karega, browser double-delete nahi karega).
+         *
+         *  Case B — Prev page bilkul blank hai:
+         *    → Prev page remove karo.
+         *    → Cursor current page start par.
+         *    → Reflow.
+         *    → return TRUE.
+         * ══════════════════════════════════════════════ */
         _handleBackspace() {
             const sel = window.getSelection();
             if (!sel?.rangeCount) return false;
             const range = sel.getRangeAt(0);
 
-            // If there's a selection, let browser delete it
-            if (!range.collapsed) return false;
-
             const pc = CursorManager._ancestorPC(range.startContainer);
             if (!pc) return false;
+
+            // Agar cursor page ke start pe nahi hai → browser handle kare
             if (!CursorManager.isAtAbsoluteStart(range, pc)) return false;
 
             const page    = pc.closest('.editor-page');
             if (!page) return false;
             const pageNum = parseInt(page.dataset.page, 10);
-            if (pageNum <= 1) return false;
+            if (pageNum <= 1) return false;   // Page 1 pe kuch nahi
 
             const c        = this.getContainer();
             const prevPage = c.querySelector(`.editor-page[data-page="${pageNum - 1}"]`);
             const prevPC   = prevPage?.querySelector('.page-content');
             if (!prevPC) return false;
 
-            const prevIsBlank = this._isPageBlank(prevPC);
+            // ── CASE B: Prev page bilkul blank hai ─────────────────────────
+            const prevIsBlank =
+                !prevPC.textContent.trim() &&
+                (prevPC.children.length === 0 ||
+                 (prevPC.children.length === 1 &&
+                  prevPC.children[0].tagName === 'P' &&
+                  !prevPC.children[0].textContent.trim()));
+
+            if (prevIsBlank) {
+                this._pushUndoSnapshot();
+                prevPage.remove();
+
+                pc.focus({ preventScroll: true });
+                try {
+                    const r = document.createRange();
+                    r.selectNodeContents(pc);
+                    r.collapse(true);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(r);
+                } catch (_) {
+                    CursorManager.setCursorAtStart(pc);
+                }
+
+                this._state.currentPage = pageNum - 1;
+                requestAnimationFrame(() => {
+                    this._doReflow(pageNum - 1).then(() => {
+                        this._updateStatusBar();
+                        this._syncHiddenField();
+                        this._bus.emit('content:changed');
+                    });
+                });
+                return true;  // preventDefault — browser double-delete na kare
+            }
+
+            // ── CASE A: Prev page mein content hai ────────────────────────
+            // 🔧 FIX v4.4: Cursor move + character delete EK SAATH karo.
+            // Prev page ka last text node dhundo aur uska last character hata do.
 
             this._pushUndoSnapshot();
 
-            if (prevIsBlank) {
-                // Remove blank previous page, keep cursor on current
-                this._removePage(prevPage);
-                pc.focus({ preventScroll: true });
-                CursorManager.setCursorAtStart(pc);
-                this._state.currentPage = pageNum - 1;
-            } else {
-                // Delete last char of prev page, move cursor there
-                const lastNode = this._lastTextNode(prevPC);
+            const lastNode = this._lastTextNode(prevPC);
 
-                if (lastNode && lastNode.length > 0) {
-                    try {
-                        const delRange = document.createRange();
-                        delRange.setStart(lastNode, lastNode.length - 1);
-                        delRange.setEnd(lastNode, lastNode.length);
-                        delRange.deleteContents();
+            if (lastNode && lastNode.length > 0) {
+                // Last character ki exact range banao aur delete karo
+                try {
+                    const delRange = document.createRange();
+                    delRange.setStart(lastNode, lastNode.length - 1);
+                    delRange.setEnd(lastNode, lastNode.length);
+                    delRange.deleteContents();  // character hat gaya
 
-                        prevPC.focus({ preventScroll: true });
-                        const r = document.createRange();
-                        r.setStart(lastNode, lastNode.length);
-                        r.collapse(true);
-                        window.getSelection().removeAllRanges();
-                        window.getSelection().addRange(r);
-                    } catch (_) {
-                        CursorManager.setCursorAtEnd(prevPC);
-                    }
-                } else {
+                    // Cursor ab us text node ke end pe set karo (length ek kam ho gayi)
                     prevPC.focus({ preventScroll: true });
+                    const r = document.createRange();
+                    const s = window.getSelection();
+                    const newLen = lastNode.length; // already updated after deleteContents
+                    r.setStart(lastNode, newLen);
+                    r.collapse(true);
+                    s.removeAllRanges();
+                    s.addRange(r);
+                } catch (_) {
                     CursorManager.setCursorAtEnd(prevPC);
                 }
-                this._state.currentPage = pageNum - 1;
+            } else {
+                // Last node empty ya exist nahi karta —
+                // koi deletable content nahi, sirf cursor move karo
+                prevPC.focus({ preventScroll: true });
+                try {
+                    const r = document.createRange();
+                    r.selectNodeContents(prevPC);
+                    r.collapse(false);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(r);
+                } catch (_) {
+                    CursorManager.setCursorAtEnd(prevPC);
+                }
             }
 
+            this._state.currentPage = pageNum - 1;
+
+            // Reflow async — content change ho sakta hai (prev page se char gaya)
             requestAnimationFrame(() => {
                 this._doReflow(pageNum - 1).then(() => {
                     this._updateStatusBar();
@@ -1624,21 +1249,55 @@
                 });
             });
 
-            return true;
+            return true;  // 🔧 FIX: TRUE — browser ka native backspace rok do (double-delete avoid)
+        }
+
+        // Helper: element ka last text node
+        _lastTextNode(el) {
+            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            let last = null, n;
+            while ((n = w.nextNode())) last = n;
+            return last;
+        }
+
+        // Helper: element ka first text node
+        _firstTextNode(el) {
+            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            return w.nextNode();
         }
 
 
-        /* ══════════════════════════════════════════════════
-         *  DELETE FORWARD  v5.0
-         * ══════════════════════════════════════════════════ */
+        /* ══════════════════════════════════════════════
+         *  ⚡ DELETE FORWARD — v4.4 "SINGLE-PRESS" EDITION
+         *
+         *  BUG (v4.3): Page end par Delete → cursor next page start par
+         *  jaata tha lekin character delete nahi hota tha.
+         *  User ko 2 baar Delete dabaana padta tha.
+         *
+         *  FIX (v4.4): Cursor move + character delete EK SAATH.
+         *
+         *  Case A — Next page mein content hai:
+         *    1. Next page ka first text node dhundo.
+         *    2. Uska pehla character range se delete karo.
+         *    3. Cursor current page ke end par set karo.
+         *    4. Reflow trigger karo.
+         *    5. return TRUE.
+         *
+         *  Case B — Next page bilkul blank hai:
+         *    → Next page remove karo.
+         *    → Cursor current page ke end par.
+         *    → Reflow.
+         *    → return TRUE.
+         * ══════════════════════════════════════════════ */
         _handleDeleteForward() {
             const sel = window.getSelection();
             if (!sel?.rangeCount) return false;
             const range = sel.getRangeAt(0);
-            if (!range.collapsed) return false;
 
             const pc = CursorManager._ancestorPC(range.startContainer);
             if (!pc) return false;
+
+            // Agar cursor page ke end pe nahi → browser handle kare
             if (!CursorManager.isAtAbsoluteEnd(range, pc)) return false;
 
             const page    = pc.closest('.editor-page');
@@ -1648,28 +1307,53 @@
             const c        = this.getContainer();
             const nextPage = c.querySelector(`.editor-page[data-page="${pageNum + 1}"]`);
             const nextPC   = nextPage?.querySelector('.page-content');
-            if (!nextPC) return false;
+            if (!nextPC) return false;   // Last page — kuch nahi
 
-            const nextIsBlank = this._isPageBlank(nextPC);
-            this._pushUndoSnapshot();
+            // ── CASE B: Next page bilkul blank hai ──────────────────────
+            const nextIsBlank =
+                !nextPC.textContent.trim() &&
+                (nextPC.children.length === 0 ||
+                 (nextPC.children.length === 1 &&
+                  nextPC.children[0].tagName === 'P' &&
+                  !nextPC.children[0].textContent.trim()));
 
             if (nextIsBlank) {
-                this._removePage(nextPage);
+                this._pushUndoSnapshot();
+                nextPage.remove();
                 CursorManager.setCursorAtEnd(pc);
-            } else {
-                const firstNode = this._firstTextNode(nextPC);
-                if (firstNode && firstNode.length > 0) {
-                    try {
-                        const delRange = document.createRange();
-                        delRange.setStart(firstNode, 0);
-                        delRange.setEnd(firstNode, 1);
-                        delRange.deleteContents();
-                    } catch (_) {}
-                }
-                CursorManager.setCursorAtEnd(pc);
+                this._state.currentPage = pageNum;
+                requestAnimationFrame(() => {
+                    this._doReflow(pageNum).then(() => {
+                        this._updateStatusBar();
+                        this._syncHiddenField();
+                        this._bus.emit('content:changed');
+                    });
+                });
+                return true;
             }
 
+            // ── CASE A: Next page mein content hai ──────────────────────
+            // 🔧 FIX v4.4: Next page ka PEHLA character delete karo,
+            // cursor current page ke end par rakho.
+
+            this._pushUndoSnapshot();
+
+            const firstNode = this._firstTextNode(nextPC);
+
+            if (firstNode && firstNode.length > 0) {
+                try {
+                    const delRange = document.createRange();
+                    delRange.setStart(firstNode, 0);
+                    delRange.setEnd(firstNode, 1);
+                    delRange.deleteContents();  // pehla character gaya
+                } catch (_) {}
+            }
+
+            // Cursor current page ke end par rakho
+            CursorManager.setCursorAtEnd(pc);
             this._state.currentPage = pageNum;
+
+            // Reflow — next page se content kam hua, consolidation ho sakti hai
             requestAnimationFrame(() => {
                 this._doReflow(pageNum).then(() => {
                     this._updateStatusBar();
@@ -1677,182 +1361,178 @@
                     this._bus.emit('content:changed');
                 });
             });
-            return true;
-        }
 
-        /* ── Remove page with smooth animation ──────── */
-        _removePage(pageEl) {
-            pageEl.classList.add('wf-page-removing');
-            setTimeout(() => pageEl.remove(), 150);
+            return true;  // preventDefault — browser double-delete na kare
         }
 
 
-        /* ══════════════════════════════════════════════════
-         *  ENTER  v5.0
-         *  - No blocking guard — every press processed
-         *  - Format-aware new paragraph
-         *  - Handles page boundary intelligently
-         * ══════════════════════════════════════════════════ */
-        _handleEnter(e) {
-            const sel = window.getSelection();
-            if (!sel?.rangeCount) return;
-            const range   = sel.getRangeAt(0);
-            const pc      = CursorManager._ancestorPC(range.startContainer);
-            if (!pc) return;
-            const page    = pc.closest('.editor-page');
-            if (!page) return;
-            const pageNum = parseInt(page.dataset.page, 10) || 1;
+        /* ══════════════════════════════════════════════
+         *  ⚡ ENTER — v4.2 "NO-BLOCK" EDITION
+         *
+         *  KEY FIX: Removed isHandlingEnter guard entirely.
+         *  Old code: set guard=true, released after 2 rAF frames.
+         *  Fast/long Enter = second press during those frames = ignored.
+         *
+         *  New strategy:
+         *  - Let browser insert <p> natively (best for IME, RTL, lists).
+         *  - Immediately after browser's insertion (1 rAF), capture the
+         *    NEW paragraph element the browser created.
+         *  - Trigger reflow from current page.
+         *  - After reflow, walk from the captured new-paragraph node up
+         *    to its current page-content (may have moved pages).
+         *  - Focus that page-content and set cursor to start of new para.
+         *  - No guard, no blocking — every Enter press is processed.
+         * ══════════════════════════════════════════════ */
+       _handleEnter(e) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
 
-            const fmt = this._readCursorFormat(range);
-            this._pushUndoSnapshot();
-            clearTimeout(this._timers.input);
+    const range = sel.getRangeAt(0);
+    const pc    = CursorManager._ancestorPC(range.startContainer);
+    if (!pc) return;
 
-            // Let browser handle the Enter (creates new <p>)
-            requestAnimationFrame(() => {
-                const selAfter    = window.getSelection();
-                const newNode     = selAfter?.rangeCount ? selAfter.getRangeAt(0).startContainer : null;
-                const newOffset   = selAfter?.rangeCount ? selAfter.getRangeAt(0).startOffset : 0;
+    const page    = pc.closest('.editor-page');
+    if (!page) return;
+    const pageNum = parseInt(page.dataset.page, 10) || 1;
 
-                // Inject format placeholder on new para (sans font-size to avoid measure issues)
-                if (fmt && newNode) {
-                    try {
-                        const newPara = newNode.nodeType === Node.TEXT_NODE ? newNode.parentElement : newNode;
-                        if (newPara && newPara !== pc && ['P','DIV','LI'].includes(newPara.tagName)) {
-                            const safeFmt = { ...fmt, fontSize: null };
-                            const css = this._fmtToCss(safeFmt);
-                            if (css) {
-                                const ph = document.createElement('span');
-                                ph.dataset.wfEnterPh = '1';
-                                ph.style.cssText = css;
-                                ph.textContent = '\u200B';
-                                newPara.insertBefore(ph, newPara.firstChild);
-                            }
-                        }
-                    } catch (_) {}
-                }
+    const fmt = this._readCursorFormat(range);  // capture BEFORE browser acts
 
-                this._doReflow(pageNum, null, false).then(() => {
-                    this._cleanEnterPlaceholders();
+    this._pushUndoSnapshot();
+    clearTimeout(this._timers.input);
 
-                    // Restore cursor to the new para (may have moved to next page)
-                    if (newNode?.isConnected) {
-                        let ownerPC = newNode;
-                        while (ownerPC && !ownerPC.classList?.contains('page-content')) {
-                            ownerPC = ownerPC.parentNode;
-                        }
-                        if (ownerPC?.classList?.contains('page-content')) {
-                            ownerPC.focus({ preventScroll: true });
-                            try {
-                                const r = document.createRange();
-                                const safeOff = Math.min(
-                                    newOffset,
-                                    newNode.nodeType === Node.TEXT_NODE
-                                        ? newNode.length
-                                        : newNode.childNodes.length
-                                );
-                                r.setStart(newNode, safeOff);
-                                r.collapse(true);
-                                window.getSelection().removeAllRanges();
-                                window.getSelection().addRange(r);
-                            } catch (_) { CursorManager.setCursorAtStart(ownerPC); }
+    requestAnimationFrame(() => {
+        const selAfter    = window.getSelection();
+        const newParaNode = selAfter?.rangeCount ? selAfter.getRangeAt(0).startContainer : null;
+        const newParaOff  = selAfter?.rangeCount ? selAfter.getRangeAt(0).startOffset : 0;
 
-                            // Scroll new para into view
-                            requestAnimationFrame(() => {
-                                try {
-                                    const rng  = window.getSelection()?.getRangeAt(0);
-                                    const rect = rng?.getBoundingClientRect();
-                                    if (rect && (rect.bottom > window.innerHeight - 20 || rect.top < 60)) {
-                                        ownerPC.closest('.editor-page')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                                    }
-                                } catch (_) {}
-                            });
-                        }
-                    } else if (newNode && !newNode.isConnected) {
-                        const nextPC = this.getContainer()?.querySelector(`.page-content[data-page="${pageNum + 1}"]`);
-                        if (nextPC) CursorManager.setCursorAtStart(nextPC);
-                        else {
-                            const curPC = this.getContainer()?.querySelector(`.page-content[data-page="${pageNum}"]`);
-                            if (curPC) CursorManager.setCursorAtEnd(curPC);
-                        }
+        if (fmt && newParaNode) {
+            try {
+                const newPara = newParaNode.nodeType === Node.TEXT_NODE
+                    ? newParaNode.parentElement
+                    : newParaNode;
+                // 🔧 FIX v4.6: Only inject format placeholder for non-size styles.
+                // Font-size placeholder inflates the new paragraph height BEFORE
+                // reflow runs, causing measure() to see the page as already full
+                // even though the new paragraph is empty (just a cursor placeholder).
+                // We strip fontSize from the placeholder CSS so the empty line
+                // uses default line-height during reflow measurement.
+                if (newPara && newPara !== pc && newPara.tagName === 'P') {
+                    const safeFmt = Object.assign({}, fmt, { fontSize: null });
+                    const css = this._fmtToCss(safeFmt);
+                    if (css) {
+                        const ph = document.createElement('span');
+                        ph.dataset.wfEnterPh = '1';
+                        ph.style.cssText = css;
+                        ph.textContent = '\u200B';
+                        newPara.insertBefore(ph, newPara.firstChild);
                     }
-
-                    setTimeout(() => { this._updateStatusBar(); this._syncHiddenField(); }, 0);
-                    this._bus.emit('content:changed');
-                });
-            });
-        }
-
-        _readCursorFormat(range) {
-            if (!range) return null;
-            let node = range.startContainer;
-            if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-            const fmt = { fontSize: null, fontFamily: null, color: null, fontWeight: null, fontStyle: null };
-            let cur = node;
-            while (cur && !cur.classList?.contains('page-content')) {
-                const style = cur.style;
-                if (style) {
-                    if (!fmt.fontSize   && style.fontSize)   fmt.fontSize   = style.fontSize;
-                    if (!fmt.fontFamily && style.fontFamily) fmt.fontFamily = style.fontFamily;
-                    if (!fmt.color      && style.color)      fmt.color      = style.color;
-                    if (!fmt.fontWeight && style.fontWeight) fmt.fontWeight = style.fontWeight;
-                    if (!fmt.fontStyle  && style.fontStyle)  fmt.fontStyle  = style.fontStyle;
                 }
-                cur = cur.parentElement;
+            } catch (_) {}
+        }
+
+        // 🔧 FIX v4.6: Do NOT skip consolidation after Enter.
+        // With large font sizes, Enter creates a tall new paragraph that may
+        // overflow the page. skipConsolidate=true blocked pull-back of content,
+        // causing text to pile up and hide below the page boundary.
+        this._doReflow(pageNum, null, false).then(() => {
+            this._cleanEnterPlaceholders();
+
+            if (newParaNode && newParaNode.isConnected) {
+                let ownerPC = newParaNode;
+                while (ownerPC && !ownerPC.classList?.contains('page-content')) {
+                    ownerPC = ownerPC.parentNode;
+                }
+                if (ownerPC && ownerPC.classList?.contains('page-content')) {
+                    ownerPC.focus({ preventScroll: true });
+                    try {
+                        const r = document.createRange();
+                        const safeOff = Math.min(
+                            newParaOff,
+                            newParaNode.nodeType === Node.TEXT_NODE
+                                ? newParaNode.length
+                                : newParaNode.childNodes.length
+                        );
+                        r.setStart(newParaNode, safeOff);
+                        r.collapse(true);
+                        window.getSelection().removeAllRanges();
+                        window.getSelection().addRange(r);
+                    } catch (_) { CursorManager.setCursorAtStart(ownerPC); }
+
+                    requestAnimationFrame(() => {
+                        try {
+                            const sel2 = window.getSelection();
+                            if (sel2?.rangeCount) {
+                                const rng  = sel2.getRangeAt(0);
+                                const rect = rng.getBoundingClientRect();
+                                if (rect.bottom > window.innerHeight - 20 || rect.top < 60) {
+                                    ownerPC.closest('.editor-page')?.scrollIntoView({
+                                        behavior: 'smooth', block: 'nearest'
+                                    });
+                                }
+                            }
+                        } catch(_) {}
+                    });
+                }
+            } else if (newParaNode && !newParaNode.isConnected) {
+                const c = this.getContainer();
+                const nextPC = c?.querySelector(`.page-content[data-page="${pageNum + 1}"]`);
+                if (nextPC && nextPC.textContent.trim()) {
+                    CursorManager.setCursorAtStart(nextPC);
+                } else {
+                    const curPC = c?.querySelector(`.page-content[data-page="${pageNum}"]`);
+                    if (curPC) CursorManager.setCursorAtEnd(curPC);
+                }
             }
-            return Object.values(fmt).some(v => v !== null) ? fmt : null;
-        }
 
-        _fmtToCss(fmt) {
-            if (!fmt) return '';
-            const parts = [];
-            if (fmt.fontSize)   parts.push(`font-size:${fmt.fontSize}`);
-            if (fmt.fontFamily) parts.push(`font-family:${fmt.fontFamily}`);
-            if (fmt.color)      parts.push(`color:${fmt.color}`);
-            if (fmt.fontWeight) parts.push(`font-weight:${fmt.fontWeight}`);
-            if (fmt.fontStyle)  parts.push(`font-style:${fmt.fontStyle}`);
-            return parts.join(';');
-        }
-
-        _cleanEnterPlaceholders() {
-            this.getContainer()?.querySelectorAll('[data-wf-enter-ph]').forEach(ph => {
-                const para = ph.parentElement;
-                if (!para) { ph.remove(); return; }
-                const otherText = Array.from(para.childNodes)
-                    .filter(n => n !== ph)
-                    .some(n => (n.textContent || '').replace(/\u200B/g, '').trim().length > 0);
-                if (otherText) ph.remove();
-                else ph.textContent = '';
-            });
-        }
-
-        /* ── Cut handler ───────────────────────────── */
-        async _handleCut(e) {
-            const sel = window.getSelection();
-            if (!sel?.rangeCount || sel.isCollapsed) return;
-
-            const range = sel.getRangeAt(0);
-            const text  = range.toString();
-            const div   = document.createElement('div');
-            div.appendChild(range.cloneContents());
-            const html  = div.innerHTML;
-
-            // Copy to clipboard
-            await ClipboardManager.writeToClipboard(text, html);
-
-            // Delete selected content
-            this._pushUndoSnapshot();
-            range.deleteContents();
-
-            const pc = CursorManager._ancestorPC(range.startContainer);
-            const page = pc?.closest('.editor-page');
-            const pageNum = parseInt(page?.dataset.page, 10) || 1;
-
-            await this._doReflow(pageNum);
-            this._syncHiddenField();
+            setTimeout(() => { this._updateStatusBar(); this._syncHiddenField(); }, 0);
             this._bus.emit('content:changed');
-        }
+        });
+    });
+}
+_readCursorFormat(range) {
+    if (!range) return null;
+    let node = range.startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
 
-        /* ── Select All (multi-page) ─────────────── */
+    const fmt = { fontSize: null, fontFamily: null, color: null, fontWeight: null, fontStyle: null };
+    let cur = node;
+    while (cur && !cur.classList?.contains('page-content')) {
+        const style = cur.style;
+        if (style) {
+            if (!fmt.fontSize   && style.fontSize)   fmt.fontSize   = style.fontSize;
+            if (!fmt.fontFamily && style.fontFamily) fmt.fontFamily = style.fontFamily;
+            if (!fmt.color      && style.color)      fmt.color      = style.color;
+            if (!fmt.fontWeight && style.fontWeight) fmt.fontWeight = style.fontWeight;
+            if (!fmt.fontStyle  && style.fontStyle)  fmt.fontStyle  = style.fontStyle;
+        }
+        cur = cur.parentElement;
+    }
+    return Object.values(fmt).some(v => v !== null) ? fmt : null;
+}
+
+_fmtToCss(fmt) {
+    if (!fmt) return '';
+    const parts = [];
+    if (fmt.fontSize)   parts.push(`font-size:${fmt.fontSize}`);
+    if (fmt.fontFamily) parts.push(`font-family:${fmt.fontFamily}`);
+    if (fmt.color)      parts.push(`color:${fmt.color}`);
+    if (fmt.fontWeight) parts.push(`font-weight:${fmt.fontWeight}`);
+    if (fmt.fontStyle)  parts.push(`font-style:${fmt.fontStyle}`);
+    return parts.join(';');
+}
+
+_cleanEnterPlaceholders() {
+    this.getContainer()?.querySelectorAll('[data-wf-enter-ph]').forEach(ph => {
+        const para = ph.parentElement;
+        if (!para) { ph.remove(); return; }
+        const otherText = Array.from(para.childNodes)
+            .filter(n => n !== ph)
+            .some(n => (n.textContent || '').replace(/\u200B/g, '').trim().length > 0);
+        if (otherText) { ph.remove(); }
+        else           { ph.textContent = ''; }  // keep for line-height, clear ZWS
+    });
+}
+        /* ── Select All (multi-page) ────────────────── */
         _handleSelectAll() {
             const active = document.activeElement;
             if (!active?.classList.contains('page-content')) return false;
@@ -1860,12 +1540,13 @@
             const pages = Array.from(this.getContainer().querySelectorAll('.page-content'));
             if (pages.length <= 1) return false;
 
-            const first = pages[0], last = pages[pages.length - 1];
             const sel   = window.getSelection();
             const range = document.createRange();
+            const first = pages[0], last = pages[pages.length - 1];
 
             const w1 = document.createTreeWalker(first, NodeFilter.SHOW_TEXT);
             const firstTN = w1.nextNode();
+
             const w2 = document.createTreeWalker(last, NodeFilter.SHOW_TEXT);
             let lastTN = null, n;
             while ((n = w2.nextNode())) lastTN = n;
@@ -1884,22 +1565,20 @@
         }
 
 
-        /* ══════════════════════════════════════════════════
-         *  REFLOW CORE  v5.0
-         *  - Queue-based: never drops a reflow request
-         *  - Double-buffer: batch-reads before any mutation
-         *  - RAF-driven for smoothness
-         *  - Pending queue drains ASAP after current reflow
-         * ══════════════════════════════════════════════════ */
+        /* ── Reflow Core ─────────────────────────────── */
+        // 🔧 LINE-FLOW FIX: Queue reflow requests instead of dropping them.
+        // Old code: if isReflowing → silently return. Fast typing would cause
+        // missed reflows, leaving lines overflowed for multiple keystrokes.
+        // New code: set a _pendingReflow flag. After current reflow finishes,
+        // immediately run again from the earliest requested page.
         async _doReflow(fromPage, savedCursor = null, skipConsolidate = false) {
-            // Queue if already running
-            if (this._reflow_running) {
-                return new Promise(resolve => {
-                    this._reflow_queue.push({ fromPage: Math.min(fromPage, this._reflow_queue[0]?.fromPage ?? fromPage), resolve });
-                });
+            if (this._state.isReflowing) {
+                // Queue: remember the earliest page that needs reflow
+                this._pendingReflow = this._pendingReflow != null
+                    ? Math.min(this._pendingReflow, fromPage)
+                    : fromPage;
+                return;
             }
-
-            this._reflow_running = true;
             this._state.isReflowing = true;
 
             const maxIter = this._config.get('reflow.maxIterations');
@@ -1911,6 +1590,8 @@
                 while (changed && iter < maxIter) {
                     changed = false; iter++;
 
+                    // Cache page list once per iteration — querySelectorAll is
+                    // surprisingly expensive on documents with many pages.
                     const pages = Array.from(c.querySelectorAll('.editor-page'))
                         .filter(p => parseInt(p.dataset.page, 10) >= fromPage);
 
@@ -1918,42 +1599,44 @@
                         if (this._resolveOverflow(page)) changed = true;
                     }
 
+                    // Skip consolidation when Enter key triggers reflow:
+                    // Enter only ADDS a new paragraph, pages never shrink,
+                    // so trying to pull content back = wasted layout work.
                     if (!skipConsolidate && this._consolidatePages(fromPage)) changed = true;
 
                     if (useRAF && changed) await new Promise(r => requestAnimationFrame(r));
                 }
 
                 this._reIndexPages();
-                this._updateStatusBar();
 
             } catch (err) {
                 console.error('[WordFlow] Reflow error:', err);
             } finally {
                 this._state.isReflowing = false;
-                this._reflow_running    = false;
 
                 if (savedCursor) {
-                    requestAnimationFrame(() => CursorManager.restore(savedCursor, this.getContainer()));
+                    requestAnimationFrame(() =>
+                        CursorManager.restore(savedCursor, this.getContainer())
+                    );
                 }
 
                 this._bus.emit('reflow:done');
 
-                // Drain queue
-                if (this._reflow_queue.length > 0) {
-                    // Find earliest page across all queued requests
-                    const earliest = this._reflow_queue.reduce((min, q) => Math.min(min, q.fromPage), Infinity);
-                    const resolvers = this._reflow_queue.map(q => q.resolve);
-                    this._reflow_queue.length = 0;
-
-                    requestAnimationFrame(async () => {
-                        await this._doReflow(earliest);
-                        resolvers.forEach(r => r?.());
-                    });
+                // 🔧 LINE-FLOW FIX: Run queued reflow immediately after finishing
+                if (this._pendingReflow != null) {
+                    const pendingPage = this._pendingReflow;
+                    this._pendingReflow = null;
+                    // Use rAF so browser can paint the current reflow result first
+                    requestAnimationFrame(() => this._doReflow(pendingPage, null));
                 }
             }
         }
 
-        /* ── Resolve overflow on one page ───────────── */
+        /* ── Overflow resolution ────────────────────── */
+        // 🔧 LINE-FLOW FIX: overflow elements are already the ACTUAL DOM nodes
+        // returned by split() — they were already removed from pc by split() logic.
+        // We must NOT call pc.removeChild() again (double-remove = error).
+        // Also: clear nextPC placeholder BEFORE inserting to avoid measuring stale content.
         _resolveOverflow(pageEl) {
             const m = this._engine.measure(pageEl);
             if (!m?.isOverflow) return false;
@@ -1964,49 +1647,60 @@
             const { overflow } = this._engine.split(pc, m.available);
             if (!overflow.length) return false;
 
-            // Ensure pc has at least a placeholder
-            if (!pc.children.length || !pc.textContent.replace(/\u200B/g, '').trim()) {
-                pc.innerHTML = '<p><br></p>';
-            }
-
             const pageNum  = parseInt(pageEl.dataset.page, 10);
             const nextPage = this._getOrCreateNextPage(pageNum);
             const nextPC   = nextPage.querySelector('.page-content');
             if (!nextPC) return false;
 
-            // Guard: don't push into manual-break page
+            // 🔧 FIX v4.6: Ensure pc always has at least a placeholder <p>.
+            // After split(), if the top half is empty/whitespace-only, insert
+            // a placeholder so the page doesn't collapse to zero height which
+            // breaks subsequent measure() calls for this page.
+            if (!pc.children.length) {
+                pc.innerHTML = '<p><br></p>';
+            } else if (!pc.textContent.replace(/​/g, '').trim() && pc.innerHTML.trim().length < 10) {
+                pc.innerHTML = '<p><br></p>';
+            }
+
+            // ── MANUAL PAGE BREAK GUARD ────────────────────────────────
+            // Agar nextPage manual break hai to overflow push mat karo.
+            // Iske baajaye ek naya intermediate page banao.
             if (nextPage.dataset.wfManualBreak === '1') {
                 const interPage = PageFactory.create(pageNum + 1);
-                interPage.classList.add('wf-page-entering');
                 nextPage.parentNode.insertBefore(interPage, nextPage);
+                // nextPC ko newly created page se update karo
                 const interPC = interPage.querySelector('.page-content');
                 if (!interPC) return false;
-                interPC.innerHTML = '';
                 const frag2 = document.createDocumentFragment();
-                overflow.forEach(el => frag2.appendChild(el));
+                for (let i = 0; i < overflow.length; i++) frag2.appendChild(overflow[i]);
+                interPC.innerHTML = '';
                 interPC.appendChild(frag2);
                 return true;
             }
 
-            // Clear placeholder in nextPC
+            // Clear placeholder in nextPC before inserting overflowed elements
             const nextIsPlaceholder = nextPC.children.length === 1 &&
                 nextPC.children[0].tagName === 'P' &&
                 !nextPC.children[0].textContent.trim();
             if (nextIsPlaceholder) nextPC.innerHTML = '';
 
-            // Insert overflow at top of next page
-            const frag = document.createDocumentFragment();
-            overflow.forEach(el => frag.appendChild(el));
+            // Insert overflowed nodes before existing content in nextPC
+            // (they are real DOM nodes — no cloning needed, cursor refs preserved)
+const frag = document.createDocumentFragment();
+            for (let i = 0; i < overflow.length; i++) {
+                frag.appendChild(overflow[i]);
+            }
             nextPC.insertBefore(frag, nextPC.firstChild);
-
-            // Animate new content
-            nextPC.classList.add('wf-content-merged');
-            setTimeout(() => nextPC.classList.remove('wf-content-merged'), 200);
 
             return true;
         }
 
-        /* ── Consolidate pages (pull content back) ── */
+        /* ── Consolidate Pages ──────────────────────── */
+        // 🔧 LINE-FLOW FIX: Use DOM-move (not cloneNode) so live cursor nodes
+        // stay connected during consolidation. cloneNode creates a NEW node —
+        // the cursor's node reference becomes stale/disconnected when we then
+        // removeChild the original. With DOM-move the original node is just
+        // repositioned; cursor reference stays valid across the move.
         _consolidatePages(fromPage = 1) {
             const pages = Array.from(this.getContainer().querySelectorAll('.editor-page'))
                 .filter(p => parseInt(p.dataset.page, 10) >= fromPage);
@@ -2014,29 +1708,35 @@
             let changed = false;
 
             for (let i = pages.length - 1; i > 0; i--) {
-                const cur    = pages[i];
-                const prev   = pages[i - 1];
+                const cur  = pages[i];
+                const prev = pages[i - 1];
                 const curPC  = cur.querySelector('.page-content');
                 const prevPC = prev.querySelector('.page-content');
                 if (!curPC || !prevPC) continue;
 
-                // Respect manual breaks
-                if (cur.dataset.wfManualBreak === '1' || prev.dataset.wfManualBreak === '1') continue;
-
-                const curIsEmpty = this._isPageBlank(curPC) && curPC.innerHTML.trim().length < 15;
-                if (curIsEmpty && this.getContainer().querySelectorAll('.editor-page').length > 1) {
-                    this._removePage(cur);
-                    changed = true;
+                // ── MANUAL PAGE BREAK GUARD ──────────────────────────────────
+                // Agar yeh page manual page break se bani hai to consolidation
+                // ise merge NAHI karegi — user ki intentional break respect karo.
+                if (cur.dataset.wfManualBreak === '1' || prev.dataset.wfManualBreak === '1') {
                     continue;
                 }
 
-                // Try pulling children from cur to prev
+                const curIsEmpty = !curPC.textContent.trim() && curPC.innerHTML.trim().length < 15;
+                if (curIsEmpty && this.getContainer().querySelectorAll('.editor-page').length > 1) {
+                    // Empty page ko bhi mat hatao agar manual break hai
+                    if (!cur.dataset.wfManualBreak) {
+                        cur.remove();
+                        changed = true;
+                    }
+                    continue;
+                }
+
                 let node = curPC.firstElementChild;
                 while (node) {
                     const next = node.nextElementSibling;
                     prevPC.appendChild(node);
                     const m = this._engine.measure(prev);
-                    if (m?.isOverflow) {
+                    if (m && m.isOverflow) {
                         curPC.insertBefore(node, curPC.firstChild);
                         break;
                     }
@@ -2044,10 +1744,10 @@
                     node = next;
                 }
 
-                const nowEmpty = this._isPageBlank(curPC) && curPC.innerHTML.trim().length < 15;
+                const nowEmpty = !curPC.textContent.trim() && curPC.innerHTML.trim().length < 15;
                 if (nowEmpty && !cur.dataset.wfManualBreak &&
                     this.getContainer().querySelectorAll('.editor-page').length > 1) {
-                    this._removePage(cur);
+                    cur.remove();
                     changed = true;
                 }
             }
@@ -2055,27 +1755,7 @@
             return changed;
         }
 
-        /* ── Helpers ────────────────────────────────── */
-        _isPageBlank(pc) {
-            return !pc.textContent.replace(/\u200B/g, '').trim() &&
-                (pc.children.length === 0 ||
-                 (pc.children.length === 1 &&
-                  pc.children[0].tagName === 'P' &&
-                  !pc.children[0].textContent.trim()));
-        }
-
-        _lastTextNode(el) {
-            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-            let last = null, n;
-            while ((n = w.nextNode())) last = n;
-            return last;
-        }
-
-        _firstTextNode(el) {
-            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-            return w.nextNode();
-        }
-
+        /* ── Page helpers ───────────────────────────── */
         _getOrCreateNextPage(curNum) {
             const c    = this.getContainer();
             const next = c.querySelector(`.editor-page[data-page="${curNum + 1}"]`);
@@ -2087,7 +1767,6 @@
             }
 
             const newPage = PageFactory.create(curNum + 1);
-            newPage.classList.add('wf-page-entering');
             const curPage = c.querySelector(`.editor-page[data-page="${curNum}"]`);
             curPage?.nextElementSibling
                 ? c.insertBefore(newPage, curPage.nextElementSibling)
@@ -2108,10 +1787,7 @@
                 page.dataset.page = num;
 
                 const pc = page.querySelector('.page-content');
-                if (pc) {
-                    pc.dataset.page = num;
-                    if (!pc.innerHTML.trim() || pc.innerHTML.trim() === '') pc.innerHTML = '<p><br></p>';
-                }
+                if (pc) { pc.dataset.page = num; if (!pc.innerHTML.trim()) pc.innerHTML = '<p><br></p>'; }
 
                 const ind = page.querySelector('.page-indicator');
                 if (ind) ind.textContent = `Page ${num}`;
@@ -2119,11 +1795,6 @@
                 const nb = page.querySelector('.page-number');
                 if (nb) nb.textContent = num;
             });
-
-            // Update current page indicator
-            const totalPages = pages.length;
-            const totalEl    = document.getElementById('totalPages');
-            if (totalEl) totalEl.textContent = totalPages;
         }
 
         /* ── Undo / Redo ────────────────────────────── */
@@ -2144,7 +1815,7 @@
             }, 50);
         }
 
-        /* ── Status bar / Hidden field ───────────────── */
+        /* ── Status bar / Hidden field ──────────────── */
         _syncHiddenField() {
             const el = document.getElementById('noteContent');
             if (el) el.value = this.serialize();
@@ -2154,7 +1825,7 @@
             const pages = this.getContainer()?.querySelectorAll('.editor-page') || [];
             let words = 0, chars = 0;
             pages.forEach(p => {
-                const t = p.querySelector('.page-content')?.textContent.replace(/\u200B/g, '') || '';
+                const t = p.querySelector('.page-content')?.textContent || '';
                 chars += t.length;
                 words += t.replace(/\u00A0/g, ' ').trim().split(/\s+/).filter(Boolean).length;
             });
@@ -2162,27 +1833,19 @@
             if ($('totalPages')) $('totalPages').textContent = pages.length;
             if ($('wordCount'))  $('wordCount').textContent  = words;
             if ($('charCount'))  $('charCount').textContent  = chars;
-
-            // Update current page
-            const focused = document.activeElement?.closest?.('.editor-page');
-            if (focused && $('currentPageNum')) {
-                $('currentPageNum').textContent = focused.dataset.page || 1;
-            }
         }
 
         /* ── Auto-save / Error boundary ─────────────── */
         _setupAutoSave() {
-            setInterval(() => {
-                this._syncHiddenField();
-                this._bus.emit('content:autosaved');
-            }, this._config.get('autoSave.intervalMs'));
+            setInterval(() => { this._syncHiddenField(); this._bus.emit('content:autosaved'); },
+                this._config.get('autoSave.intervalMs'));
             window.addEventListener('beforeunload', () => this._syncHiddenField());
         }
 
         _setupErrorBoundary() {
             window.addEventListener('error', e => {
                 if (!e.error) return;
-                console.error('[WordFlow] Global error:', e.error);
+                console.error('[WordFlow] Global error — saving content:', e.error);
                 try { this._syncHiddenField(); } catch {}
             });
             window.addEventListener('unhandledrejection', e => {
@@ -2192,15 +1855,15 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  12 ▸ BOOTSTRAP
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  11 ▸ BOOTSTRAP
+     * ───────────────────────────────────────────────── */
     let _instance = null;
     let _booting  = false;
 
     async function initializeWordFlow(options = {}) {
-        if (_instance) { console.warn('[WordFlow] Already initialized'); return _instance; }
-        if (_booting)  { console.warn('[WordFlow] Boot in progress');    return null; }
+        if (_instance)  { console.warn('[WordFlow] Already initialized'); return _instance; }
+        if (_booting)   { console.warn('[WordFlow] Boot in progress');    return null; }
         _booting = true;
 
         try {
@@ -2223,6 +1886,7 @@
             window.wordFlow           = _instance;
 
             setTimeout(() => _initPaperPanel(_instance), 200);
+
             return _instance;
 
         } catch (err) {
@@ -2235,14 +1899,18 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  13 ▸ PAPER PANEL
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  12 ▸ PAPER PANEL
+     * ───────────────────────────────────────────────── */
     function _initPaperPanel(controller) {
         const btn   = document.getElementById('openPaperPanel');
         const panel = document.getElementById('paperPanel');
         if (!btn || !panel) return;
-        btn.onclick = () => { panel.style.display = panel.style.display === 'block' ? 'none' : 'block'; };
+
+        btn.onclick = () => {
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        };
+
         document.querySelectorAll('.paper-item').forEach(item => {
             item.addEventListener('click', () => {
                 const size = item.dataset.size;
@@ -2250,12 +1918,14 @@
                 panel.style.display = 'none';
             });
         });
+
+        console.log('[WordFlow] Paper panel ready');
     }
 
 
-    /* ═══════════════════════════════════════════════════════
-     *  14 ▸ SAFE GLOBAL PROXY
-     * ═══════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────
+     *  13 ▸ SAFE GLOBAL PROXY
+     * ───────────────────────────────────────────────── */
     if (typeof window !== 'undefined') {
         const _earlyQueue = [];
 
@@ -2264,8 +1934,11 @@
                 get(_, prop) {
                     if (prop === 'then') return undefined;
                     return (...args) => {
-                        if (_instance && _instance[prop]) return _instance[prop](...args);
+                        if (_instance && _instance[prop]) {
+                            return _instance[prop](...args);
+                        }
                         _earlyQueue.push({ method: prop, args });
+                        console.log(`[WordFlow] Queued early call: ${prop}()`);
                         return Promise.resolve();
                     };
                 }
@@ -2278,10 +1951,13 @@
             if (!ctrl) return;
 
             if (_earlyQueue.length) {
+                console.log(`[WordFlow] Replaying ${_earlyQueue.length} early call(s)...`);
                 for (const { method, args } of _earlyQueue) {
                     if (typeof ctrl[method] === 'function') {
                         try { await ctrl[method](...args); }
                         catch (e) { console.warn(`[WordFlow] Early replay failed for ${method}:`, e); }
+                    } else {
+                        console.warn(`[WordFlow] Unknown method in early call: ${method}`);
                     }
                 }
                 _earlyQueue.length = 0;
@@ -2293,9 +1969,9 @@
     }
 
 
-    /* ═══════════════════════════════════════════════════════
+    /* ─────────────────────────────────────────────────
      *  PUBLIC EXPORTS
-     * ═══════════════════════════════════════════════════════ */
+     * ───────────────────────────────────────────────── */
     return {
         initializeWordFlow,
         getController: () => _instance,
@@ -2310,7 +1986,6 @@
         EventBus,
         ConfigManager,
         VersionManager,
-        ClipboardManager,
 
         version: ENGINE_VERSION,
     };
