@@ -3,188 +3,33 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NoteSaver Pro </title>
+    <title>NoteSaver Pro</title>
+
+    <!-- ✅ FIX 6: Bootstrap पहले load करो — base styles -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+    <!-- ✅ FIX 1: Inline CSS हटाया — सब CSS एक ही external file में -->
     <link href="{{ url_for('static', filename='css/notepro-professional.css') }}" rel="stylesheet" />
+
     <meta name="csrf-token" content="{{ csrf_token }}" />
 
-    <style>
-    /* ── STATUS BAR ─────────────────────────────────────── */
-    .status-bar {
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        height: 22px;
-        background: #1e2a3a;
-        color: #c8d8e8;
-        font-size: 11px;
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        padding: 0 12px;
-        z-index: 99999;
-        font-family: 'Segoe UI', Arial, sans-serif;
-        border-top: 1px solid #2e3f52;
-        user-select: none;
-    }
-    .status-bar .status-item {
-        display: flex; align-items: center; gap: 4px; white-space: nowrap;
-    }
-    .status-bar .status-item i { font-size: 10px; opacity: 0.75; color: #7eb8e8; }
-    .status-bar .status-item span { color: #d0e4f4; font-weight: 500; }
-
-    body { padding-bottom: 22px; }
-
-    /* ── HEADER ── */
-    .editor-header {
-        background: #1e2a3a !important;
-        border-bottom: 1px solid #2e3f52 !important;
-    }
-    .editor-header::before { display: none !important; }
-
-    /* ── TOGGLE SWITCH ── */
-    .ns-toggle-wrap {
-        position: relative !important; width: 34px !important;
-        height: 18px !important; flex-shrink: 0 !important;
-        display: inline-block !important;
-    }
-    .ns-toggle {
-        opacity: 0 !important; width: 0 !important; height: 0 !important;
-        position: absolute !important; pointer-events: none !important;
-        appearance: none !important; -webkit-appearance: none !important;
-        border: none !important; background: none !important;
-        margin: 0 !important; padding: 0 !important; box-shadow: none !important;
-    }
-    .ns-toggle::before, .ns-toggle::after {
-        display: none !important; content: none !important;
-        background: none !important; opacity: 0 !important;
-        width: 0 !important; height: 0 !important;
-    }
-    .ns-toggle-label {
-        position: absolute !important; inset: 0 !important;
-        background: #3a4a5c !important; border-radius: 9999px !important;
-        cursor: pointer !important; transition: background 0.2s !important;
-        border: none !important; margin: 0 !important; padding: 0 !important;
-    }
-    .ns-toggle-label::after {
-        content: '' !important; display: block !important;
-        position: absolute !important; top: 3px !important; left: 3px !important;
-        width: 12px !important; height: 12px !important;
-        background: #c8d8e8 !important; border-radius: 50% !important;
-        transition: transform 0.2s, background 0.2s !important; opacity: 1 !important;
-    }
-    .ns-toggle-label::before { display: none !important; content: none !important; }
-    .ns-toggle:checked + .ns-toggle-label { background: #4472C4 !important; }
-    .ns-toggle:checked + .ns-toggle-label::after {
-        transform: translateX(16px) !important; background: #ffffff !important;
-    }
-
-    /* ── MS Word Color Palette ── */
-    .word-color-group { display: flex; flex-direction: column; align-items: center; }
-    .word-color-btn-wrap {
-        display: flex; align-items: stretch;
-        border: 1px solid #adadad; border-radius: 3px;
-        overflow: visible; background: #fff; height: 32px;
-    }
-    .word-color-btn-wrap:hover { border-color: #2b579a; box-shadow: 0 0 0 1px #2b579a; }
-    .word-color-apply-btn {
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        gap: 1px; padding: 3px 5px;
-        background: transparent; border: none; cursor: pointer;
-        min-width: 28px; transition: background 0.12s;
-    }
-    .word-color-apply-btn:hover { background: #e8f0fe; }
-    .word-color-icon { display: flex; align-items: center; justify-content: center; color: #1a1a1a; line-height: 1; }
-    .word-color-bar { display: block; width: 16px; height: 4px; border-radius: 1px; transition: background 0.2s; }
-    .word-color-arrow-btn {
-        display: flex; align-items: center; justify-content: center;
-        padding: 0 4px; background: transparent; border: none;
-        border-left: 1px solid #d0d0d0; cursor: pointer;
-        color: #555; transition: background 0.12s; min-width: 16px;
-    }
-    .word-color-arrow-btn:hover { background: #d0e2ff; }
-
-    .editor-toolbar, .toolbar-group, .word-color-group { overflow: visible !important; }
-
-    .word-palette-dropdown {
-        position: fixed; z-index: 99999;
-        background: #ffffff; border: 1px solid #b0b0b0;
-        border-radius: 4px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1);
-        padding: 10px 10px 6px 10px; min-width: 192px; user-select: none;
-    }
-    .word-palette-header {
-        font-size: 10px; font-weight: 600; color: #555;
-        letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 5px;
-    }
-    .word-palette-grid {
-        display: grid; grid-template-columns: repeat(10, 18px);
-        gap: 2px; margin-bottom: 2px;
-    }
-    .word-swatch {
-        width: 18px; height: 18px; border-radius: 2px;
-        border: 1px solid rgba(0,0,0,0.15); cursor: pointer;
-        transition: transform 0.1s, box-shadow 0.1s; position: relative;
-    }
-    .word-swatch:hover {
-        transform: scale(1.22); box-shadow: 0 2px 8px rgba(0,0,0,0.28);
-        z-index: 2; border-color: #2b579a;
-    }
-    .word-swatch.selected::after {
-        content: ''; position: absolute; inset: -2px;
-        border: 2px solid #2b579a; border-radius: 3px;
-    }
-    .word-palette-footer {
-        margin-top: 8px; padding-top: 6px;
-        border-top: 1px solid #e0e0e0;
-        display: flex; align-items: center; position: relative;
-    }
-    .word-palette-footer button {
-        display: flex; align-items: center; gap: 5px;
-        font-size: 11.5px; color: #1a1a1a;
-        background: none; border: none; cursor: pointer;
-        padding: 2px 4px; border-radius: 3px; transition: background 0.12s;
-    }
-    .word-palette-footer button:hover { background: #e8f0fe; color: #2b579a; }
-    .word-swatch[data-name]:hover::before {
-        content: attr(data-name); position: absolute;
-        bottom: 100%; left: 50%; transform: translateX(-50%);
-        background: #222; color: #fff; font-size: 10px;
-        padding: 2px 6px; border-radius: 3px;
-        white-space: nowrap; margin-bottom: 4px;
-        pointer-events: none; z-index: 999;
-    }
-    [data-theme="dark"] .word-color-btn-wrap,
-    .dark-mode .word-color-btn-wrap { background: #2d2d2d; border-color: #555; }
-    [data-theme="dark"] .word-color-arrow-btn,
-    .dark-mode .word-color-arrow-btn { border-left-color: #444; color: #ccc; }
-    [data-theme="dark"] .word-color-icon,
-    .dark-mode .word-color-icon { color: #eee; }
-    [data-theme="dark"] .word-palette-dropdown,
-    .dark-mode .word-palette-dropdown { background: #2d2d2d; border-color: #555; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
-    [data-theme="dark"] .word-palette-header,
-    .dark-mode .word-palette-header { color: #aaa; }
-    [data-theme="dark"] .word-palette-footer button,
-    .dark-mode .word-palette-footer button { color: #ddd; }
-    [data-theme="dark"] .word-palette-footer,
-    .dark-mode .word-palette-footer { border-top-color: #444; }
-    </style>
+    <!-- ✅ FIX 1 & 2: कोई भी inline <style> block नहीं — सब CSS file में है -->
 </head>
 <body>
 
     <!-- STATUS BAR -->
-    <div class="status-bar">
-        <span class="status-item">
+    <div class="ns-status-bar">
+        <span class="ns-status-item">
             <i class="fas fa-file-alt"></i>
             Page <span id="currentPageNum">1</span> of <span id="totalPages">1</span>
         </span>
-        <span class="status-item">
+        <span class="ns-status-item">
             <i class="fas fa-font"></i>
             <span id="wordCount">0</span> words
         </span>
-        <span class="status-item">
-            <span style="font-style:normal;font-weight:600;color:#7eb8e8;font-size:12px;">≈</span>
+        <span class="ns-status-item">
+            <span class="ns-approx-symbol">≈</span>
             <span id="charCount">0</span> chars
         </span>
     </div>
@@ -220,36 +65,35 @@
     </div>
 
     <div class="note-editor-wrapper">
-        <!-- Header -->
-        <div class="editor-header d-flex justify-content-between align-items-center"
-             style="background:#1e2a3a !important; border-bottom:1px solid #2e3f52; padding:5px 14px; min-height:36px;">
+
+        <!-- ✅ FIX 1 & 2: Header — inline styles हटाए, CSS classes use की -->
+        <div class="editor-header ns-header d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-sm me-1"
-                   style="color:#c8d8e8;border:1px solid #2e3f52;background:transparent;font-size:12px;padding:2px 10px;"
-                   title="Return to dashboard">
+                <a href="{{ url_for('dashboard') }}" class="ns-back-btn" title="Return to dashboard">
                     <i class="fas fa-arrow-left me-1"></i>Back
                 </a>
-                <span style="color:#c8d8e8;font-size:13px;font-weight:600;letter-spacing:0.03em;">
-                    <i class="fas fa-file-alt me-1" style="color:#7eb8e8;"></i>NoteSaver Pro
+                <span class="ns-brand-title">
+                    <i class="fas fa-file-alt me-1 ns-brand-icon"></i>NoteSaver Pro
                 </span>
-                <span id="autoSaveStatus" style="color:#7eb8e8;font-size:11px;display:flex;align-items:center;gap:4px;">
-                    <i class="fas fa-circle" style="font-size:7px;color:#4caf50;"></i>Ready
+                <span id="autoSaveStatus" class="ns-autosave-status">
+                    <i class="fas fa-circle ns-status-dot"></i>Ready
                 </span>
             </div>
             <div class="d-flex align-items-center gap-3">
+                <!-- ✅ FIX 2: Toggle — !important हटाया, specificity बढ़ाई CSS में -->
                 <div class="d-flex align-items-center gap-2">
                     <div class="ns-toggle-wrap">
                         <input type="checkbox" id="autoSaveSwitch" class="ns-toggle" checked title="Toggle auto-save" />
                         <label for="autoSaveSwitch" class="ns-toggle-label"></label>
                     </div>
-                    <label for="autoSaveSwitch" style="color:#c8d8e8;font-size:12px;cursor:pointer;margin:0;user-select:none;">Auto-save</label>
+                    <label for="autoSaveSwitch" class="ns-toggle-text">Auto-save</label>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <div class="ns-toggle-wrap">
                         <input type="checkbox" id="darkModeSwitch" class="ns-toggle" title="Toggle dark mode" />
                         <label for="darkModeSwitch" class="ns-toggle-label"></label>
                     </div>
-                    <label for="darkModeSwitch" style="color:#c8d8e8;font-size:12px;cursor:pointer;margin:0;user-select:none;">Dark Mode</label>
+                    <label for="darkModeSwitch" class="ns-toggle-text">Dark Mode</label>
                 </div>
             </div>
         </div>
@@ -319,16 +163,11 @@
                 <button type="button" class="toolbar-btn" onclick="openLineSpacingDialog()"   title="Line & Paragraph Spacing"><i class="fas fa-text-height"></i></button>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════
-                 COLOR SETTINGS — MS Word Style
-                 applyColor / applyTextColor / applyBgColor →
-                 sab wordEditor.setTextColor / setHighlight call karte hain
-                 execCommand yahan NAHI hai — JS handle karta hai
-            ═══════════════════════════════════════════════════════ -->
+            <!-- COLOR SETTINGS — MS Word Style -->
             <div class="toolbar-group">
 
                 <!-- TEXT COLOR -->
-                <div class="form-group word-color-group" style="position:relative;">
+                <div class="form-group word-color-group ns-color-group">
                     <label>Text Color</label>
                     <div class="word-color-btn-wrap">
                         <button type="button" class="word-color-apply-btn"
@@ -340,7 +179,7 @@
                                           font-weight="bold" font-size="13" fill="currentColor">A</text>
                                 </svg>
                             </span>
-                            <span class="word-color-bar" id="textColorBar" style="background:#000000;"></span>
+                            <span class="word-color-bar" id="textColorBar"></span>
                         </button>
                         <button type="button" class="word-color-arrow-btn"
                                 title="More text colors"
@@ -351,7 +190,7 @@
                     <div class="word-palette-dropdown" id="textColorPalette" style="display:none;">
                         <div class="word-palette-header">Theme Colors</div>
                         <div class="word-palette-grid" id="textThemeGrid"></div>
-                        <div class="word-palette-header" style="margin-top:8px;">Standard Colors</div>
+                        <div class="word-palette-header ns-palette-header-mt">Standard Colors</div>
                         <div class="word-palette-grid" id="textStandardGrid"></div>
                         <div class="word-palette-footer">
                             <button type="button" onclick="wordColorPalette.openCustomColor('text')">
@@ -361,15 +200,14 @@
                                 </svg>
                                 More Colors...
                             </button>
-                            <input type="color" id="textColorCustom"
-                                   style="position:absolute;opacity:0;width:0;height:0;"
+                            <input type="color" id="textColorCustom" class="ns-color-hidden"
                                    onchange="wordColorPalette.setCustomColor('text', this.value)" />
                         </div>
                     </div>
                 </div>
 
                 <!-- HIGHLIGHT COLOR -->
-                <div class="form-group word-color-group" style="position:relative;">
+                <div class="form-group word-color-group ns-color-group">
                     <label>Highlight</label>
                     <div class="word-color-btn-wrap">
                         <button type="button" class="word-color-apply-btn"
@@ -382,7 +220,7 @@
                                     <rect x="3" y="1" width="8" height="3" rx="1" fill="white" opacity="0.3"/>
                                 </svg>
                             </span>
-                            <span class="word-color-bar" id="bgColorBar" style="background:#ffff00;"></span>
+                            <span class="word-color-bar" id="bgColorBar"></span>
                         </button>
                         <button type="button" class="word-color-arrow-btn"
                                 title="More highlight colors"
@@ -393,7 +231,7 @@
                     <div class="word-palette-dropdown" id="bgColorPalette" style="display:none;">
                         <div class="word-palette-header">Theme Colors</div>
                         <div class="word-palette-grid" id="bgThemeGrid"></div>
-                        <div class="word-palette-header" style="margin-top:8px;">Standard Colors</div>
+                        <div class="word-palette-header ns-palette-header-mt">Standard Colors</div>
                         <div class="word-palette-grid" id="bgStandardGrid"></div>
                         <div class="word-palette-footer">
                             <button type="button" onclick="wordColorPalette.openCustomColor('bg')">
@@ -403,8 +241,7 @@
                                 </svg>
                                 More Colors...
                             </button>
-                            <input type="color" id="bgColorCustom"
-                                   style="position:absolute;opacity:0;width:0;height:0;"
+                            <input type="color" id="bgColorCustom" class="ns-color-hidden"
                                    onchange="wordColorPalette.setCustomColor('bg', this.value)" />
                         </div>
                     </div>
@@ -463,9 +300,6 @@
 
             <!-- Page Management -->
             <div class="toolbar-group">
-               <!--   <button type="button" class="toolbar-btn" onclick="wordEditor.insertPageBreak()" title="Insert Page Break (Ctrl+Enter)">
-                    <i class="fas fa-file-plus"></i> Page Break
-                </button> -->
                 <button type="button" class="toolbar-btn" onclick="wordEditor.addNewPage()" title="Add New Page">
                     <i class="fas fa-file"></i> Add New Page
                 </button>
@@ -484,7 +318,7 @@
         </div>
         <!-- END Toolbar -->
 
-        <!-- Editor Content -->
+        <!-- ✅ FIX 3: Editor Content — stable DOM structure guaranteed -->
         <div class="editor-content">
             <form id="noteForm" method="POST"
                   action="{% if action == 'Edit' %}{{ url_for('edit_note', note_id=note_id) }}{% else %}{{ url_for('create_note') }}{% endif %}">
@@ -509,18 +343,28 @@
                     </div>
                 </div>
 
+                <!-- ✅ FIX 3: pagesContainer — JS dependency structure stable रहेगी -->
                 <div id="pagesContainer"
                      class="pages-container {% if form_data and form_data.paper_size %}paper-{{ form_data.paper_size }}{% else %}paper-a4{% endif %}">
+                    <!--
+                        JS (word-editor-flow.js) यहाँ dynamically .editor-page > .page-content inject करता है।
+                        Structure guaranteed:
+                        <div class="editor-page">
+                            <div class="page-content" contenteditable="true"></div>
+                            <div class="page-number">Page N</div>
+                        </div>
+                    -->
                 </div>
 
+                <!-- ✅ FIX 4: Single hidden input — duplicate ID नहीं -->
                 <input type="hidden" id="noteContent" name="content"
                        value="{{ form_data.content if form_data and form_data.content else '' }}">
             </form>
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index:11;">
+    <!-- Toast Container — ✅ FIX 10: z-index reasonable value -->
+    <div id="toastContainer" class="position-fixed top-0 end-0 p-3 ns-toast-container">
         <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body" id="successMessage"></div>
@@ -535,121 +379,135 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- ✅ FIX 5: Scripts defer के साथ — load order guaranteed -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
-    <script src="{{ url_for('static', filename='js/word-editor-flow.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/word_editor_functions.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/word_formatting_dialogs.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/advanced-features.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/version-control.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/collaboration-workflow.js') }}"></script>
+    <!-- ✅ FIX 5: App JS files — defer order सही, wordEditor पहले define होगा -->
+    <script src="{{ url_for('static', filename='js/word-editor-flow.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/word_editor_functions.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/word_formatting_dialogs.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/advanced-features.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/version-control.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/collaboration-workflow.js') }}" defer></script>
 
     <script>
     // ══════════════════ CSRF ══════════════════
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    $.ajaxSetup({
-        beforeSend(xhr, settings) {
-            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-            }
-        }
-    });
-
-    // ══════════════════ EDIT MODE ══════════════════
-    window.isEditMode      = false;
-    window.shouldSaveDraft = true;
-
+    // ✅ FIX 5: defer के बाद यह script DOMContentLoaded में wrap है
     document.addEventListener('DOMContentLoaded', function () {
 
-        if (window.location.pathname.includes('/edit_note/')) {
-            window.isEditMode      = true;
-            window.shouldSaveDraft = false;
+        // CSRF Setup
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        if (window.jQuery) {
+            $.ajaxSetup({
+                beforeSend(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                    }
+                }
+            });
         }
 
-        function initializeWordFlow() {
+        // ══ EDIT MODE ══
+        window.isEditMode      = window.location.pathname.includes('/edit_note/');
+        window.shouldSaveDraft = !window.isEditMode;
+
+        // ══════════════════════════════════════════════════════════
+        // ✅ FIX 3 & 5: wordFlow initialize — robust check
+        // ══════════════════════════════════════════════════════════
+        function waitForWordFlow(maxAttempts = 15, intervalMs = 100) {
             return new Promise((resolve, reject) => {
                 let attempts = 0;
                 const check = setInterval(() => {
                     if (typeof window.wordFlow !== 'undefined' && window.wordFlow) {
-                        clearInterval(check); resolve(window.wordFlow);
-                    } else if (attempts++ >= 10) {
-                        clearInterval(check); reject(new Error('WordFlow timeout'));
+                        clearInterval(check);
+                        resolve(window.wordFlow);
+                    } else if (attempts++ >= maxAttempts) {
+                        clearInterval(check);
+                        reject(new Error('WordFlow init timeout — JS load order check करो'));
                     }
-                }, 100);
+                }, intervalMs);
             });
         }
 
+        // ✅ FIX 3: .page-content existence guard
+        function getFirstPageContent() {
+            const pc = document.querySelector('.page-content');
+            if (!pc) {
+                console.error('❌ .page-content not found — DOM structure check करो');
+                return null;
+            }
+            return pc;
+        }
+
+        // Load content after wordFlow ready
         window.addEventListener('load', async function () {
             try {
-                await initializeWordFlow();
+                await waitForWordFlow();
                 const savedContent = document.getElementById('noteContent');
+
                 if (window.isEditMode && savedContent && savedContent.value.trim()) {
                     setTimeout(() => {
                         try {
-                            if (window.wordFlow && typeof window.wordFlow.deserialize === 'function') {
+                            if (typeof window.wordFlow.deserialize === 'function') {
                                 window.wordFlow.deserialize(savedContent.value);
                             } else {
-                                const fp = document.querySelector('.page-content');
+                                const fp = getFirstPageContent();
                                 if (fp) fp.innerHTML = savedContent.value;
                             }
                             setTimeout(() => {
                                 if (window.wordFlow?.performReflow) window.wordFlow.performReflow();
                             }, 200);
-                        } catch (err) { console.error('❌ Error loading edit content:', err); }
+                        } catch (err) {
+                            console.error('❌ Edit content load error:', err);
+                        }
                     }, 400);
                 } else {
                     setTimeout(() => {
-                        const pc = document.querySelector('.page-content');
+                        const pc = getFirstPageContent();
                         if (pc && pc.innerHTML.trim()) window.wordFlow.performReflow();
                     }, 300);
                 }
-            } catch (e) { console.error('❌ Failed to initialize wordFlow:', e); }
+            } catch (e) {
+                console.error('❌ WordFlow init failed:', e);
+            }
         });
 
         // ══ DARK MODE ══
-        document.getElementById('darkModeSwitch').addEventListener('change', function () {
-            const isDark = this.checked;
-            localStorage.setItem('darkMode', isDark);
-            if (isDark) document.documentElement.setAttribute('data-theme', 'dark');
-            else        document.documentElement.removeAttribute('data-theme');
-            [
-                document.body,
-                document.querySelector('.note-editor-wrapper'),
-                document.querySelector('.editor-header'),
-                document.querySelector('.editor-toolbar'),
-                document.querySelector('.editor-content'),
-            ].forEach(el => el && el.classList.toggle('dark-mode', isDark));
-            document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.toggle('dark-mode', isDark));
-            document.querySelectorAll('.toolbar-select').forEach(s => s.classList.toggle('dark-mode', isDark));
-            // Page content always stays white
-            document.querySelectorAll('.page-content').forEach(p => {
-                p.style.backgroundColor = '#ffffff';
-                p.style.color = '#000000';
+        // ✅ FIX 2: JS style change अब काम करेगा — !important हटाया CSS में
+        const darkModeSwitch = document.getElementById('darkModeSwitch');
+        if (darkModeSwitch) {
+            darkModeSwitch.addEventListener('change', function () {
+                const isDark = this.checked;
+                localStorage.setItem('darkMode', isDark);
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+                document.body.classList.toggle('dark-mode', isDark);
+
+                [
+                    document.querySelector('.note-editor-wrapper'),
+                    document.querySelector('.editor-header'),
+                    document.querySelector('.editor-toolbar'),
+                    document.querySelector('.editor-content'),
+                ].forEach(el => el && el.classList.toggle('dark-mode', isDark));
+
+                document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.toggle('dark-mode', isDark));
+                document.querySelectorAll('.toolbar-select').forEach(s => s.classList.toggle('dark-mode', isDark));
+
+                // Page content always white
+                document.querySelectorAll('.page-content').forEach(p => {
+                    p.style.backgroundColor = '#ffffff';
+                    p.style.color = '#000000';
+                });
             });
-        });
-        if (localStorage.getItem('darkMode') === 'true') {
-            document.getElementById('darkModeSwitch').checked = true;
-            document.getElementById('darkModeSwitch').dispatchEvent(new Event('change'));
-        }
-    });
 
-    // ══════════════════ TOAST ══════════════════
-    function showToast(message, type) {
-        const toastId   = type === 'success' ? 'successToast' : 'errorToast';
-        const messageId = type === 'success' ? 'successMessage' : 'errorMessage';
-        const msgEl     = document.getElementById(messageId);
-        const toastEl   = document.getElementById(toastId);
-        if (msgEl && toastEl) {
-            msgEl.textContent = message;
-            new bootstrap.Toast(toastEl, { delay: type === 'error' ? 5000 : 3000 }).show();
+            if (localStorage.getItem('darkMode') === 'true') {
+                darkModeSwitch.checked = true;
+                darkModeSwitch.dispatchEvent(new Event('change'));
+            }
         }
-    }
 
-    // ══════════════════ AUTO-SAVE ══════════════════
-    document.addEventListener('DOMContentLoaded', function () {
+        // ══════════════════ AUTO-SAVE ══════════════════
         const autoSaveSwitch = document.getElementById('autoSaveSwitch');
         const draftIndicator = document.getElementById('draftIndicator');
         const draftStatus    = document.getElementById('draftStatus');
@@ -666,122 +524,138 @@
         }
 
         function startAutoSave() {
+            if (autoSaveTimer) clearInterval(autoSaveTimer);
             autoSaveTimer = setInterval(() => {
-                if (!autoSaveSwitch.checked || !window.shouldSaveDraft) return;
-                draftIndicator.classList.add('show');
-                draftStatus.textContent = 'Saving...';
-                draftIndicator.classList.add('saving');
+                if (!autoSaveSwitch?.checked || !window.shouldSaveDraft) return;
+                draftIndicator.classList.add('show', 'saving');
+                if (draftStatus) draftStatus.textContent = 'Saving...';
+
                 const allContent = collectContent();
+                const draft = {
+                    title:     document.getElementById('noteTitle')?.value || '',
+                    category:  document.getElementById('noteCategory')?.value || '',
+                    content:   allContent,
+                    timestamp: new Date().toISOString(),
+                };
+
                 try {
-                    localStorage.setItem('noteDraft', JSON.stringify({
-                        title:     document.getElementById('noteTitle').value,
-                        category:  document.getElementById('noteCategory').value || '',
-                        content:   allContent,
-                        timestamp: new Date().toISOString(),
-                    }));
+                    localStorage.setItem('noteDraft', JSON.stringify(draft));
                 } catch (e) {
+                    // Storage full — trim content
                     try {
-                        localStorage.removeItem('noteDraft');
-                        localStorage.setItem('noteDraft', JSON.stringify({
-                            title:     document.getElementById('noteTitle').value,
-                            category:  document.getElementById('noteCategory').value || '',
-                            content:   allContent.substring(0, 50000),
-                            timestamp: new Date().toISOString(),
-                        }));
-                    } catch (e2) { console.warn('⚠️ Draft save failed'); }
+                        draft.content = allContent.substring(0, 50000);
+                        localStorage.setItem('noteDraft', JSON.stringify(draft));
+                    } catch (e2) {
+                        console.warn('⚠️ Draft save failed — storage full');
+                    }
                 }
+
                 setTimeout(() => {
-                    draftStatus.textContent = 'Saved at ' + new Date().toLocaleTimeString();
+                    if (draftStatus) draftStatus.textContent = 'Saved at ' + new Date().toLocaleTimeString();
                     draftIndicator.classList.remove('saving');
                     draftIndicator.classList.add('saved');
-                    setTimeout(() => draftIndicator.classList.remove('show'), 3000);
+                    setTimeout(() => draftIndicator.classList.remove('show', 'saved'), 3000);
                 }, 500);
             }, AUTO_SAVE_INTERVAL);
         }
 
-        autoSaveSwitch.addEventListener('change', function () {
-            localStorage.setItem('autoSaveEnabled', this.checked);
-            if (this.checked) startAutoSave();
-            else if (autoSaveTimer) clearInterval(autoSaveTimer);
-        });
+        if (autoSaveSwitch) {
+            autoSaveSwitch.addEventListener('change', function () {
+                localStorage.setItem('autoSaveEnabled', this.checked);
+                if (this.checked) startAutoSave();
+                else if (autoSaveTimer) { clearInterval(autoSaveTimer); autoSaveTimer = null; }
+            });
+            if (autoSaveSwitch.checked) startAutoSave();
+        }
 
-        if (autoSaveSwitch.checked) startAutoSave();
-    });
+    }); // END DOMContentLoaded
+
+
+    // ══════════════════ TOAST ══════════════════
+    function showToast(message, type) {
+        const toastId   = type === 'success' ? 'successToast' : 'errorToast';
+        const messageId = type === 'success' ? 'successMessage' : 'errorMessage';
+        const msgEl     = document.getElementById(messageId);
+        const toastEl   = document.getElementById(toastId);
+        if (msgEl && toastEl) {
+            msgEl.textContent = message;
+            new bootstrap.Toast(toastEl, { delay: type === 'error' ? 5000 : 3000 }).show();
+        }
+    }
 
     // ══════════════════ FORM SUBMIT ══════════════════
-    document.getElementById('noteForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        const saveBtn      = document.querySelector('button[form="noteForm"]');
-        const originalText = saveBtn.innerHTML;
+    document.addEventListener('DOMContentLoaded', function () {
+        const noteForm = document.getElementById('noteForm');
+        if (!noteForm) return;
 
-        try {
-            const pages = document.querySelectorAll('.page-content');
-            if (!pages.length) { showToast('❌ No pages found', 'error'); return; }
+        noteForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const saveBtn      = document.querySelector('button[form="noteForm"]');
+            const originalHTML = saveBtn?.innerHTML || '';
 
-            let allContent = '';
-            pages.forEach((p, i, arr) => {
-                allContent += p.innerHTML;
-                if (i < arr.length - 1) allContent += '<div class="page-break-marker"></div>';
-            });
+            try {
+                // ✅ FIX 3: .page-content check
+                const pages = document.querySelectorAll('.page-content');
+                if (!pages.length) { showToast('❌ No pages found — editor load error', 'error'); return; }
 
-            const textContent = allContent.replace(/<[^>]*>/g, '').trim();
-            if (!textContent)           { showToast('❌ Cannot save empty document', 'error'); return; }
-            if (!document.getElementById('noteTitle')?.value.trim()) { showToast('❌ Please enter a title', 'error'); return; }
-            if (textContent.length < 10) { showToast('❌ Document must have at least 10 characters', 'error'); return; }
-            if (pages.length > 100)      { showToast('❌ Document has too many pages (max 100)', 'error'); return; }
+                let allContent = '';
+                pages.forEach((p, i, arr) => {
+                    allContent += p.innerHTML;
+                    if (i < arr.length - 1) allContent += '<div class="page-break-marker"></div>';
+                });
 
-            let contentInput = document.getElementById('noteContent');
-            if (!contentInput) {
-                contentInput = document.createElement('input');
-                contentInput.type = 'hidden'; contentInput.id = 'noteContent'; contentInput.name = 'content';
-                this.appendChild(contentInput);
+                const textContent = allContent.replace(/<[^>]*>/g, '').trim();
+                const titleVal    = document.getElementById('noteTitle')?.value.trim();
+
+                if (!textContent)              { showToast('❌ Cannot save empty document', 'error'); return; }
+                if (!titleVal)                 { showToast('❌ Please enter a title', 'error'); return; }
+                if (textContent.length < 10)   { showToast('❌ Document must have at least 10 characters', 'error'); return; }
+                if (pages.length > 100)        { showToast('❌ Document has too many pages (max 100)', 'error'); return; }
+
+                // ✅ FIX 4: noteContent ID एक ही जगह — already in DOM, just update value
+                const contentInput = document.getElementById('noteContent');
+                if (contentInput) contentInput.value = allContent;
+
+                if (saveBtn) { saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; saveBtn.disabled = true; }
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const formData  = new FormData(this);
+                formData.set('content', allContent);
+
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData,
+                    credentials: 'same-origin',
+                })
+                .then(r => r.ok ? r.json() : Promise.reject(r))
+                .then(data => {
+                    if (data.success || data.id) {
+                        localStorage.removeItem('noteDraft');
+                        showToast('✅ Note saved successfully!', 'success');
+                        setTimeout(() => { window.location.href = data.redirect_url || '/dashboard'; }, 1000);
+                    } else {
+                        showToast('❌ Error: ' + (data.error || 'Unknown error'), 'error');
+                        if (saveBtn) { saveBtn.innerHTML = originalHTML; saveBtn.disabled = false; }
+                    }
+                })
+                .catch(err => {
+                    console.error('Save error:', err);
+                    showToast('❌ Error saving note', 'error');
+                    if (saveBtn) { saveBtn.innerHTML = originalHTML; saveBtn.disabled = false; }
+                });
+
+            } catch (err) {
+                console.error('Unexpected submit error:', err);
+                showToast('❌ Unexpected error occurred', 'error');
+                if (saveBtn) { saveBtn.innerHTML = originalHTML; saveBtn.disabled = false; }
             }
-            contentInput.value = allContent;
-
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-            saveBtn.disabled  = true;
-
-            const formData = new FormData(this);
-            formData.set('content', allContent);
-
-            fetch(this.action, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData,
-                credentials: 'same-origin',
-            })
-            .then(r => r.ok ? r.json() : Promise.reject(r))
-            .then(data => {
-                if (data.success || data.id) {
-                    localStorage.removeItem('noteDraft');
-                    showToast('✅ Note saved successfully!', 'success');
-                    setTimeout(() => { window.location.href = data.redirect_url || '/dashboard'; }, 1000);
-                } else {
-                    showToast('❌ Error: ' + (data.error || 'Unknown error'), 'error');
-                    saveBtn.innerHTML = originalText; saveBtn.disabled = false;
-                }
-            })
-            .catch(err => {
-                console.error('Save error:', err);
-                showToast('❌ Error saving note', 'error');
-                saveBtn.innerHTML = originalText; saveBtn.disabled = false;
-            });
-
-        } catch (err) {
-            console.error('Unexpected error:', err);
-            showToast('❌ Unexpected error occurred', 'error');
-            saveBtn.innerHTML = originalText; saveBtn.disabled = false;
-        }
+        });
     });
 
     // ══════════════════════════════════════════════════════════
     //  MS WORD COLOR PALETTE
-    //
-    //  ✅ applyColor     → wordEditor.setTextColor / setHighlight
-    //  ✅ applyTextColor → wordEditor.setTextColor
-    //  ✅ applyBgColor   → wordEditor.setHighlight
-    //
-    //  execCommand NAHI hai yahan — JS ka multi-page engine use hota hai
+    //  ✅ execCommand नहीं — wordEditor.setTextColor / setHighlight
     // ══════════════════════════════════════════════════════════
     const wordColorPalette = (() => {
 
@@ -830,8 +704,16 @@
         let currentBgColor   = '#ffff00';
         let savedSelection   = null;
 
-        // ── Grid builder ──
+        // Initialize color bars with default colors
+        function initColorBars() {
+            const tb = document.getElementById('textColorBar');
+            const bb = document.getElementById('bgColorBar');
+            if (tb) tb.style.background = currentTextColor;
+            if (bb) bb.style.background = currentBgColor;
+        }
+
         function buildGrid(gridEl, colors) {
+            if (!gridEl) return;
             gridEl.innerHTML = '';
             colors.forEach(c => {
                 const sw = document.createElement('div');
@@ -840,8 +722,7 @@
                 sw.dataset.name     = c.name;
                 sw.title            = c.name;
                 sw.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    e.preventDefault(); e.stopPropagation();
                     const type = gridEl.id.startsWith('text') ? 'text' : 'bg';
                     applyColor(type, c.hex);
                     closeAll();
@@ -855,12 +736,12 @@
             buildGrid(document.getElementById('textStandardGrid'), STANDARD_COLORS);
             buildGrid(document.getElementById('bgThemeGrid'),      THEME_COLORS);
             buildGrid(document.getElementById('bgStandardGrid'),   STANDARD_COLORS);
+            initColorBars();
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('.word-color-group')) closeAll();
+                if (!e.target.closest('.word-color-group') && !e.target.closest('.word-palette-dropdown')) closeAll();
             });
         }
 
-        // ── Selection save/restore ──
         function saveSelection() {
             const sel = window.getSelection();
             if (sel && sel.rangeCount > 0) savedSelection = sel.getRangeAt(0).cloneRange();
@@ -876,51 +757,36 @@
             } catch (_) { return false; }
         }
 
-        // ══════════════════════════════════════════════════════
-        //  applyColor — CENTRAL FUNCTION
-        //  execCommand BILKUL NAHI — wordEditor ke smart functions
-        //  setTextColor / setHighlight handle karte hain:
-        //    ✅ Single page selection
-        //    ✅ Multi-page selection (Ctrl+A ke baad bhi)
-        //    ✅ Cursor pe (bina selection ke)
-        // ══════════════════════════════════════════════════════
         function applyColor(type, hex) {
             if (type === 'text') {
                 currentTextColor = hex;
-                document.getElementById('textColorBar').style.background = hex;
+                const tb = document.getElementById('textColorBar');
+                if (tb) tb.style.background = hex;
                 restoreSelection();
                 if (window.wordEditor) window.wordEditor.setTextColor(hex);
             } else {
                 currentBgColor = hex;
-                document.getElementById('bgColorBar').style.background = hex;
+                const bb = document.getElementById('bgColorBar');
+                if (bb) bb.style.background = hex;
                 restoreSelection();
                 if (window.wordEditor) window.wordEditor.setHighlight(hex);
             }
         }
 
-        // ── Palette positioning — hamesha button ke NICHE, left-align ──
         function positionPalette(palette, triggerBtn) {
-            // Pehle display karo taaki dimensions mil sakein
             palette.style.visibility = 'hidden';
             palette.style.display    = 'block';
-
-            const rect    = triggerBtn.getBoundingClientRect();
-            const pw      = palette.offsetWidth  || 210;
-            const ph      = palette.offsetHeight || 200;
-            const vw      = window.innerWidth;
-            const vh      = window.innerHeight;
-
-            // ── Top: hamesha button ke niche ──
-            let top = rect.bottom + 4;
-            // Agar niche jagah nahi → upar dikhao
+            const rect = triggerBtn.getBoundingClientRect();
+            const pw   = palette.offsetWidth  || 210;
+            const ph   = palette.offsetHeight || 200;
+            const vw   = window.innerWidth;
+            const vh   = window.innerHeight;
+            let top  = rect.bottom + 4;
             if (top + ph > vh - 10) top = rect.top - ph - 4;
             if (top < 4) top = 4;
-
-            // ── Left: button ke left edge se, par screen se bahar na jaye ──
             let left = rect.left;
             if (left + pw > vw - 8) left = vw - pw - 8;
             if (left < 4) left = 4;
-
             palette.style.top        = top  + 'px';
             palette.style.left       = left + 'px';
             palette.style.visibility = 'visible';
@@ -942,47 +808,28 @@
         }
 
         function closeAll() {
-            document.getElementById('textColorPalette').style.display = 'none';
-            document.getElementById('bgColorPalette').style.display   = 'none';
+            const tp = document.getElementById('textColorPalette');
+            const bp = document.getElementById('bgColorPalette');
+            if (tp) tp.style.display = 'none';
+            if (bp) bp.style.display = 'none';
         }
 
-        // ── Apply buttons (toolbar pe) ──
-        function applyTextColor() {
-            restoreSelection();
-            if (window.wordEditor) window.wordEditor.setTextColor(currentTextColor);
-        }
-
-        function applyBgColor() {
-            restoreSelection();
-            if (window.wordEditor) window.wordEditor.setHighlight(currentBgColor);
-        }
-
-        function openCustomColor(type) {
-            closeAll();
-            document.getElementById(type === 'text' ? 'textColorCustom' : 'bgColorCustom').click();
-        }
-
+        function applyTextColor() { restoreSelection(); if (window.wordEditor) window.wordEditor.setTextColor(currentTextColor); }
+        function applyBgColor()   { restoreSelection(); if (window.wordEditor) window.wordEditor.setHighlight(currentBgColor); }
+        function openCustomColor(type) { closeAll(); document.getElementById(type === 'text' ? 'textColorCustom' : 'bgColorCustom')?.click(); }
         function setCustomColor(type, hex) { applyColor(type, hex); }
 
-        // ════════════════════════════════════════════════════════
-        //  FIX v4.3: Save selection on mousedown ANYWHERE
-        //  (not just outside .word-color-group).
-        //  Clicking the ▼ arrow button was losing the selection
-        //  before applyColor() could call restoreSelection().
-        //  Now we save on EVERY mousedown and restore correctly.
-        // ════════════════════════════════════════════════════════
-document.addEventListener('mousedown', (e) => {
-    const isPaletteClick = e.target.closest?.('.word-color-group') ||
-                           e.target.closest?.('.word-palette-dropdown');
-
-    if (isPaletteClick) {
-        saveSelection();   // पहले save करो
-        setTimeout(() => restoreSelection(), 0); // फिर restore
-        return;
-    }
-
-    saveSelection();
-});
+        // ✅ FIX: Selection save on mousedown — palette clicks selection नहीं खोएंगे
+        document.addEventListener('mousedown', (e) => {
+            const isPaletteClick = e.target.closest?.('.word-color-group') ||
+                                   e.target.closest?.('.word-palette-dropdown');
+            if (isPaletteClick) {
+                saveSelection();
+                setTimeout(() => restoreSelection(), 0);
+                return;
+            }
+            saveSelection();
+        });
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
         else init();
@@ -991,17 +838,15 @@ document.addEventListener('mousedown', (e) => {
     })();
 
     // ══════════════════ DEVTOOLS DISABLE ══════════════════
-    // NOTE: contextmenu block HATAYA GAYA — JS ka custom menu kaam kare
     document.addEventListener('keydown', function (e) {
         const isInsideEditor = document.activeElement?.classList?.contains('page-content');
-        if (isInsideEditor) return;
+        if (isInsideEditor) return; // Editor typing block नहीं होगा
         if (
             e.key === 'F12' ||
             (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase())) ||
             (e.ctrlKey && e.key.toLowerCase() === 'u')
         ) {
             e.preventDefault();
-            return false;
         }
     });
     </script>
