@@ -984,14 +984,11 @@ def get_user_id():
     return get_remote_address()
 
 def get_login_key():
-    """
-    Login attempt ki key username se banao — IP se nahi.
-    Isse sirf wo user block hoga jiska username galat hai.
-    """
     if request.method == 'POST':
-        username = request.form.get('username', '').strip().lower()
-        if username:
-            return f"login_user:{username}"
+        login_input = request.form.get('username', '').strip().lower()
+        if login_input:
+            # Email ho ya username — dono ko same tarah treat karo
+            return f"login_user:{login_input}"
     return f"login_ip:{get_remote_address()}"
 
 
@@ -2816,26 +2813,29 @@ def login():
     form = LoginForm()
 
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
+
+        # ✅ NAYA — username YA email dono accept karo
+        login_input = form.username.data.strip()
+        user = User.query.filter(
+            (User.username == login_input) |
+            (User.email == login_input.lower())
+        ).first()
+        # ─────────────────────────────────────────
 
         if user and user.check_password(form.password.data):
 
-            # ── next page save karo PEHLE session.clear() se ─
             from urllib.parse import urlparse
             next_page = request.args.get('next') or request.form.get('next') or ''
             if next_page and urlparse(next_page).netloc != '':
-                next_page = ''  # external URL block karo
+                next_page = ''
 
-            # ── clear old session ─────────────────────────────
             session.clear()
             login_user(user, remember=False)
 
-            # ── detect device ─────────────────────────────────
             ua_string = request.headers.get('User-Agent', '')
             from user_agents import parse as _ua_parse
             ua = _ua_parse(ua_string)
 
-            # Browser + version + OS — e.g. "Chrome 124 on Windows 10"
             browser = ua.browser.family or "Unknown Browser"
             browser_ver = ua.browser.version_string.split('.')[0] if ua.browser.version_string else ""
             os_name = ua.os.family or "Unknown OS"
@@ -2845,14 +2845,10 @@ def login():
             os_str = f"{os_name} {os_ver}".strip()
             device = f"{browser_str} on {os_str}"
 
-            # ── create unique device session ──────────────────
             session_token = str(uuid.uuid4())
 
-            # ── MAX 2 DEVICES LIMIT ────────────────────────────
             MAX_ACTIVE_SESSIONS = 2
 
-            # Pehle ALL active sessions deactivate karo jo limit se zyada hain
-            # created_at se sort — oldest first
             active_sessions = UserSession.query.filter_by(
                 user_id=user.id,
                 is_active=True
@@ -2860,18 +2856,15 @@ def login():
 
             logger.info(f"Login: {user.username} has {len(active_sessions)} active sessions before new login")
 
-            # Agar 2 ya zyada active hain to oldest(s) deactivate karo
-            # taaki naye ke saath total 2 rahein
             while len(active_sessions) >= MAX_ACTIVE_SESSIONS:
-                oldest = active_sessions.pop(0)  # sabse purani
+                oldest = active_sessions.pop(0)
                 oldest.is_active = False
                 logger.info(
                     f"Session limit hit — force-logout: {oldest.device} "
                     f"token={oldest.session_token[:8]}"
                 )
 
-            db.session.flush()  # deactivation DB mein likho commit se pehle
-            # ──────────────────────────────────────────────────
+            db.session.flush()
 
             new_session = UserSession(
                 user_id=user.id,
@@ -2887,7 +2880,6 @@ def login():
             db.session.add(new_session)
             db.session.commit()
 
-            # save device token
             session['session_token'] = session_token
             session.permanent = False
 
@@ -2896,7 +2888,7 @@ def login():
                 return redirect(next_page)
             return redirect(url_for('dashboard'))
 
-        flash('Invalid username or password.', 'danger')
+        flash('Invalid username/email or password.', 'danger')  # ✅ Message bhi update kiya
 
     return render_template('login.html', form=form)
 
