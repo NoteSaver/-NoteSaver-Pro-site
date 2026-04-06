@@ -983,6 +983,17 @@ def get_user_id():
         pass
     return get_remote_address()
 
+def get_login_key():
+    """
+    Login attempt ki key username se banao — IP se nahi.
+    Isse sirf wo user block hoga jiska username galat hai.
+    """
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip().lower()
+        if username:
+            return f"login_user:{username}"
+    return f"login_ip:{get_remote_address()}"
+
 
 def get_user_tier():
     """Return user tier for rate limiting decisions: 'premium', 'authenticated', 'anonymous'."""
@@ -2797,9 +2808,9 @@ def request_username_reminder():
     
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
-@limiter.limit("50 per hour")
-@limiter.limit("200 per day")
+@limiter.limit("10 per minute", key_func=get_login_key)
+@limiter.limit("50 per hour",   key_func=get_login_key)
+@limiter.limit("200 per day",   key_func=get_login_key)
 def login():
 
     form = LoginForm()
