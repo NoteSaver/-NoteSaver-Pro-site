@@ -1,47 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
 
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta name="google-site-verification" content="DKwspdp33G0xmYEpjfGK0IfulF2yDxOvm6PiVvKW4ZU">
+<!-- ✅ Primary SEO -->
+<title>{% block title %}Free Online Note Maker | NoteSaver Pro - Write & Download Notes{% endblock %}</title>
 
-<meta name="description" content="NoteSaver Pro is a free online notepad to create, edit, and download notes in PDF and DOCX format instantly. Fast, secure, and easy to use.">
+<meta name="description" content="{% block meta_description %}Write notes online for free with NoteSaver Pro. Create, edit, and download notes in PDF & DOCX instantly. Fast, secure, and easy to use.{% endblock %}">
 
-<meta name="keywords" content="online notepad, note taking app, free notes, save notes pdf, note saver pro, online notes editor">
+<meta name="keywords" content="online note maker, free notes app, write notes online, notepad online, notes pdf download">
 
 <meta name="robots" content="index, follow">
-
+<meta name="author" content="NoteSaver Pro">
 <meta name="theme-color" content="#2563eb">
-
 <meta name="csrf-token" content="{{ csrf_token }}">
 
-<link rel="canonical" href="https://notepro-site.onrender.com/">
+<!-- ✅ Canonical -->
+<link rel="canonical" href="{% block canonical %}https://notepro-site.onrender.com/{% endblock %}">
 
-<title>NoteSaver Pro - Free Online Notepad | Write & Download Notes PDF DOCX</title>
+<!-- ✅ Google Verification -->
+<meta name="google-site-verification" content="DKwspdp33G0xmYEpjfGK0IfulF2yDxOvm6PiVvKW4ZU">
 
-    <!-- Fonts -->
-    <link rel="canonical" href="https://notepro-site.onrender.com/">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- AOS Animation -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet"> 
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/zoom-scale.css') }}">
+<!-- ✅ Open Graph -->
+<meta property="og:title" content="{% block og_title %}Free Online Note Maker - NoteSaver Pro{% endblock %}">
+<meta property="og:description" content="{% block og_description %}Write and download notes in PDF & DOCX instantly. Free online notepad for students.{% endblock %}">
+<meta property="og:url" content="{% block og_url %}https://notepro-site.onrender.com/{% endblock %}">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://notepro-site.onrender.com/static/preview.png">
 
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<!-- ✅ Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Free Online Note Maker">
+<meta name="twitter:description" content="Write notes online instantly and download PDF">
 
-    <style>
+<!-- ✅ Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "NoteSaver Pro",
+  "url": "https://notepro-site.onrender.com/",
+  "applicationCategory": "Productivity",
+  "operatingSystem": "All"
+}
+</script>
+
+<!-- ✅ Favicon -->
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+<!-- ✅ Performance Optimization -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+<!-- ✅ Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- ✅ CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/zoom-scale.css') }}">
+
+<!-- ✅ AOS -->
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+<!-- ✅ Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
 :root {
     --primary: #2563eb;
     --secondary: #1e40af;
