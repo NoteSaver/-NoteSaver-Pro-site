@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+
+# Allow important public pages
+Allow: /about
+Allow: /contact
+Allow: /privacy-policy
+Allow: /terms
+Allow: /register
+Allow: /login
+Allow: /premium
+Allow: /reviews
+
+# Block private/user pages from crawling
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /settings
+Disallow: /notes/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /static/
+
+# Sitemap location
+Sitemap: https://notepro-site.onrender.com/sitemap.xml
