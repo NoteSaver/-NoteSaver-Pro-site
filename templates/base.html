@@ -764,12 +764,14 @@ html {
         <p class="footer-text mb-1">
             &copy; 2025 <strong>NoteSaver Pro</strong>
         </p>
+        {% if not current_user.is_authenticated %}
         <p style="font-size: 0.8rem; color: var(--gray-600); margin: 0;">
-            <a href="/about" style="color: var(--gray-600); text-decoration: none; margin: 0 0.5rem;">About</a> |
-            <a href="/contact" style="color: var(--gray-600); text-decoration: none; margin: 0 0.5rem;">Contact</a> |
-            <a href="/privacy-policy" style="color: var(--gray-600); text-decoration: none; margin: 0 0.5rem;">Privacy Policy</a> |
-            <a href="/terms" style="color: var(--gray-600); text-decoration: none; margin: 0 0.5rem;">Terms of Service</a>
+            <a href="/about" style="color:var(--gray-600);text-decoration:none;margin:0 0.5rem;">About</a> |
+            <a href="/contact" style="color:var(--gray-600);text-decoration:none;margin:0 0.5rem;">Contact</a> |
+            <a href="/privacy-policy" style="color:var(--gray-600);text-decoration:none;margin:0 0.5rem;">Privacy Policy</a> |
+            <a href="/terms" style="color:var(--gray-600);text-decoration:none;margin:0 0.5rem;">Terms of Service</a>
         </p>
+        {% endif %}
     </div>
 </footer>
 
