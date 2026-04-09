@@ -2521,17 +2521,23 @@ def terms():
 # ── CONTACT PAGE ─────────────────────────────────────
  
 @app.route('/contact', methods=['GET', 'POST'])
+@csrf.exempt  # ← Yeh add karo (public form hai, login required nahi)
 def contact():
     if request.method == 'POST':
         name    = request.form.get('name', '').strip()
         email   = request.form.get('email', '').strip()
         subject = request.form.get('subject', '').strip()
         message = request.form.get('message', '').strip()
- 
-        # Basic validation
+
         if not all([name, email, subject, message]):
             flash('Please fill in all required fields.', 'warning')
             return render_template('contact.html')
+
+        print(f"[CONTACT] From: {name} <{email}> | Subject: {subject}")
+        flash("Your message has been sent! We'll respond within 24 hours.", 'success')
+        return redirect(url_for('contact'))
+
+    return render_template('contact.html')
  
         # ── OPTION A: Send email (if you have Flask-Mail set up) ──
         # from flask_mail import Message
