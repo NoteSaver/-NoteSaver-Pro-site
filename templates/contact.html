@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us | NoteSaver Pro - Get Support{% endblock %}
+{% block meta_description %}Contact NoteSaver Pro for support, feedback, or questions. We're here to help you with your note-taking needs.{% endblock %}
+{% block canonical %}https://notepro-site.onrender.com/contact{% endblock %}
+
+{% block content %}
+<style>
+.contact-hero {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: white;
+    padding: 5rem 0 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.contact-hero::before {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.contact-hero h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    position: relative; z-index: 1;
+}
+.contact-hero p {
+    font-size: 1.1rem;
+    opacity: 0.85;
+    position: relative; z-index: 1;
+}
+.contact-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 5rem 2rem 6rem;
+}
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 4rem;
+    align-items: start;
+}
+/* Form */
+.contact-form-card {
+    background: white;
+    border-radius: 1.5rem;
+    padding: 3rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+}
+.contact-form-card h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.75rem;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+}
+.contact-form-card .subtitle {
+    color: #6b7280;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+}
+.form-group { margin-bottom: 1.5rem; }
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+.form-control {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s;
+    background: #f9fafb;
+    color: #0f172a;
+    outline: none;
+}
+.form-control:focus {
+    border-color: #2563eb;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.1);
+}
+textarea.form-control { resize: vertical; min-height: 140px; }
+select.form-control { cursor: pointer; }
+.btn-submit {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Poppins', sans-serif;
+}
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(37,99,235,0.3);
+}
+.btn-submit i { margin-right: 0.5rem; }
+.form-success {
+    display: none;
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    color: #065f46;
+    margin-top: 1rem;
+}
+.form-success i { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+/* Info Cards */
+.contact-info { display: flex; flex-direction: column; gap: 1.5rem; }
+.info-card {
+    background: white;
+    border-radius: 1.25rem;
+    padding: 2rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.04);
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    transition: all 0.3s;
+}
+.info-card:hover {
+    transform: translateX(5px);
+    border-color: #2563eb;
+    box-shadow: 0 8px 25px rgba(37,99,235,0.1);
+}
+.info-icon {
+    width: 50px; height: 50px;
+    border-radius: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+.info-card h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.05rem;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+}
+.info-card p { color: #6b7280; font-size: 0.95rem; line-height: 1.6; margin: 0; }
+.info-card a { color: #2563eb; text-decoration: none; font-weight: 500; }
+.info-card a:hover { text-decoration: underline; }
+.faq-section { margin-top: 5rem; }
+.faq-section h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2rem;
+    text-align: center;
+    color: #0f172a;
+    margin-bottom: 3rem;
+}
+.faq-item {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+.faq-item:hover { border-color: #2563eb; }
+.faq-question {
+    padding: 1.5rem 2rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 1rem;
+    user-select: none;
+}
+.faq-question i { color: #2563eb; transition: transform 0.3s; font-size: 0.9rem; }
+.faq-answer {
+    padding: 0 2rem 1.5rem;
+    color: #4b5563;
+    line-height: 1.7;
+    display: none;
+}
+.faq-item.open .faq-answer { display: block; }
+.faq-item.open .faq-question i { transform: rotate(180deg); }
+
+/* Dark Mode */
+body.dark-theme .contact-form-card,
+body.dark-theme .info-card,
+body.dark-theme .faq-item {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.1);
+}
+body.dark-theme .contact-form-card h2,
+body.dark-theme .info-card h3,
+body.dark-theme .faq-question { color: #f1f5f9; }
+body.dark-theme .contact-form-card .subtitle,
+body.dark-theme .info-card p,
+body.dark-theme .faq-answer { color: #94a3b8; }
+body.dark-theme .form-label { color: #cbd5e1; }
+body.dark-theme .form-control {
+    background: #0f172a;
+    border-color: rgba(255,255,255,0.1);
+    color: #f1f5f9;
+}
+body.dark-theme .form-control:focus {
+    background: #1e293b;
+    border-color: #2563eb;
+}
+body.dark-theme .faq-section h2 { color: #f1f5f9; }
+body.dark-theme .form-success {
+    background: rgba(16,185,129,0.15);
+    border-color: rgba(16,185,129,0.3);
+    color: #6ee7b7;
+}
+
+@media (max-width: 768px) {
+    .contact-grid { grid-template-columns: 1fr; gap: 2rem; }
+    .contact-hero h1 { font-size: 2.2rem; }
+    .contact-form-card { padding: 2rem; }
+}
+</style>
+
+<div class="contact-hero">
+    <h1><i class="fas fa-headset me-3"></i>Contact Us</h1>
+    <p>Have a question or feedback? We'd love to hear from you.</p>
+</div>
+
+<div class="contact-body">
+
+    <div class="contact-grid">
+
+        <!-- Contact Form -->
+        <div class="contact-form-card">
+            <h2>Send Us a Message</h2>
+            <p class="subtitle">We typically respond within 24 hours on business days.</p>
+
+            <form id="contactForm" method="POST" action="/contact">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label class="form-label" for="name">
+                        <i class="fas fa-user me-1" style="color:#2563eb;"></i> Your Name *
+                    </label>
+                    <input type="text" id="name" name="name" class="form-control"
+                           placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">
+                        <i class="fas fa-envelope me-1" style="color:#2563eb;"></i> Email Address *
+                    </label>
+                    <input type="email" id="email" name="email" class="form-control"
+                           placeholder="your@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="subject">
+                        <i class="fas fa-tag me-1" style="color:#2563eb;"></i> Subject *
+                    </label>
+                    <select id="subject" name="subject" class="form-control" required>
+                        <option value="" disabled selected>Select a topic...</option>
+                        <option value="technical">🔧 Technical Support</option>
+                        <option value="billing">💳 Billing / Premium</option>
+                        <option value="feature">💡 Feature Request</option>
+                        <option value="bug">🐛 Bug Report</option>
+                        <option value="privacy">🔒 Privacy / Data</option>
+                        <option value="other">💬 Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="message">
+                        <i class="fas fa-comment me-1" style="color:#2563eb;"></i> Message *
+                    </label>
+                    <textarea id="message" name="message" class="form-control"
+                              placeholder="Describe your question or issue in detail..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i> Send Message
+                </button>
+            </form>
+
+            <div class="form-success" id="formSuccess">
+                <i class="fas fa-check-circle"></i>
+                <strong>Message Sent Successfully!</strong>
+                <p style="margin:0.5rem 0 0; font-size:0.9rem;">We'll get back to you within 24 hours.</p>
+            </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="contact-info">
+            <div class="info-card">
+                <div class="info-icon" style="background: rgba(37,99,235,0.1); color: #2563eb;">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div>
+                    <h3>Email Support</h3>
+                    <p>For general queries and support:<br>
+                    <a href="mailto:support@notesaverpro.com">support@notesaverpro.com</a></p>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-icon" style="background: rgba(16,185,129,0.1); color: #10b981;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <h3>Response Time</h3>
+                    <p>We respond within <strong>24 hours</strong> on business days (Monday – Friday, 10am – 6pm IST).</p>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-icon" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div>
+                    <h3>Premium Support</h3>
+                    <p>Premium users get <strong>priority support</strong> with faster response times and dedicated assistance.</p>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-icon" style="background: rgba(139,92,246,0.1); color: #7c3aed;">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div>
+                    <h3>Privacy & Legal</h3>
+                    <p>For privacy concerns or legal matters:<br>
+                    <a href="mailto:privacy@notesaverpro.com">privacy@notesaverpro.com</a></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                Is NoteSaver Pro really free?
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                Yes! The core features of NoteSaver Pro are completely free — you can create, edit, and save notes without paying anything. Premium features like PDF/DOCX export and advanced organization are available with a paid plan.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                How do I download my notes as PDF?
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                PDF and DOCX export is a Premium feature. Upgrade your account to unlock instant downloads in professional formats. Go to Dashboard → select a note → click Export.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                Is my data secure on NoteSaver Pro?
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                Absolutely. All data is encrypted in transit using SSL/TLS. Your passwords are hashed and never stored in plain text. We never read or sell your notes to third parties.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                Can I cancel my Premium subscription?
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                Yes, you can cancel anytime from your Settings page. Your premium access will continue until the end of the billing period. We offer a 7-day refund policy if you're not satisfied.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                How do I delete my account?
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                You can delete your account from Settings → Account → Delete Account. This will permanently remove all your data within 30 days. This action cannot be undone.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% block scripts %}
+<script>
+function toggleFaq(item) {
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+}
+
+document.getElementById('contactForm').addEventListener('submit', function(e) {
+    // If you have a backend route for contact, remove this preventDefault
+    // For now, shows success message on submit
+    e.preventDefault();
+    this.style.display = 'none';
+    document.getElementById('formSuccess').style.display = 'block';
+});
+</script>
+{% endblock %}
+{% endblock %}

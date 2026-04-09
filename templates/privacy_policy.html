@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy | NoteSaver Pro{% endblock %}
+{% block meta_description %}Read NoteSaver Pro's Privacy Policy. Learn how we collect, use, and protect your personal data.{% endblock %}
+{% block canonical %}https://notepro-site.onrender.com/privacy-policy{% endblock %}
+
+{% block content %}
+<style>
+.policy-hero {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: white;
+    padding: 5rem 0 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.policy-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.policy-hero h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+}
+.policy-hero p {
+    font-size: 1.1rem;
+    opacity: 0.85;
+    position: relative;
+    z-index: 1;
+}
+.policy-body {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+}
+.policy-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.04);
+    transition: box-shadow 0.3s;
+}
+.policy-section:hover {
+    box-shadow: 0 8px 30px rgba(37,99,235,0.08);
+}
+.policy-section h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.policy-section h2 i {
+    color: #2563eb;
+    font-size: 1.2rem;
+    width: 30px;
+    text-align: center;
+}
+.policy-section p, .policy-section li {
+    color: #4b5563;
+    line-height: 1.8;
+    margin-bottom: 0.75rem;
+}
+.policy-section ul {
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+}
+.policy-section ul li {
+    margin-bottom: 0.5rem;
+}
+.last-updated {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2.5rem;
+    color: #1e40af;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.contact-box {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    border-radius: 1rem;
+    padding: 2.5rem;
+    text-align: center;
+    color: white;
+    margin-top: 3rem;
+}
+.contact-box h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+.contact-box p { color: rgba(255,255,255,0.85); margin-bottom: 1.5rem; }
+.contact-box a {
+    background: white;
+    color: #2563eb;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+    display: inline-block;
+}
+.contact-box a:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+
+/* Dark Mode */
+body.dark-theme .policy-section {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.1);
+}
+body.dark-theme .policy-section h2 { color: #f1f5f9; }
+body.dark-theme .policy-section p,
+body.dark-theme .policy-section li { color: #cbd5e1; }
+body.dark-theme .last-updated {
+    background: rgba(37,99,235,0.15);
+    border-color: rgba(37,99,235,0.3);
+    color: #93c5fd;
+}
+body.dark-theme .policy-body { background: transparent; }
+</style>
+
+<div class="policy-hero">
+    <h1><i class="fas fa-shield-alt me-3"></i>Privacy Policy</h1>
+    <p>Your privacy is important to us. Here's how we handle your data.</p>
+</div>
+
+<div class="policy-body">
+    
+    <div class="last-updated">
+        <i class="fas fa-calendar-check"></i>
+        <strong>Last Updated: January 1, 2025</strong> &nbsp;|&nbsp; Effective Date: January 1, 2025
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-info-circle"></i> 1. Introduction</h2>
+        <p>Welcome to <strong>NoteSaver Pro</strong> ("we", "our", or "us"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website <strong>notepro-site.onrender.com</strong> and our note-taking services.</p>
+        <p>By using NoteSaver Pro, you agree to the collection and use of information in accordance with this policy. If you do not agree, please do not use our services.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-database"></i> 2. Information We Collect</h2>
+        <p>We collect the following types of information:</p>
+        <ul>
+            <li><strong>Account Information:</strong> Name, email address, username, and password when you register.</li>
+            <li><strong>Notes Content:</strong> The text and content of notes you create and save.</li>
+            <li><strong>Usage Data:</strong> Pages visited, features used, time spent, browser type, IP address, and device information.</li>
+            <li><strong>Cookies:</strong> Small files stored on your device to improve your experience and keep you logged in.</li>
+            <li><strong>Payment Information:</strong> For Premium users, payment is processed by third-party providers. We do not store card details.</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-cog"></i> 3. How We Use Your Information</h2>
+        <p>We use the collected information to:</p>
+        <ul>
+            <li>Provide, maintain, and improve our services</li>
+            <li>Create and manage your account</li>
+            <li>Sync your notes across devices</li>
+            <li>Send important service notifications and updates</li>
+            <li>Process payments for Premium subscriptions</li>
+            <li>Analyze usage trends to improve the platform</li>
+            <li>Prevent fraud and ensure security</li>
+            <li>Comply with legal obligations</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-share-alt"></i> 4. Sharing Your Information</h2>
+        <p>We do <strong>not sell</strong> your personal data to third parties. We may share data with:</p>
+        <ul>
+            <li><strong>Service Providers:</strong> Trusted partners who help us operate (hosting, analytics, payment processing).</li>
+            <li><strong>Legal Requirements:</strong> If required by law, court order, or government authority.</li>
+            <li><strong>Business Transfers:</strong> In case of merger, acquisition, or sale of assets.</li>
+        </ul>
+        <p>All third-party partners are required to maintain the confidentiality of your information.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-cookie"></i> 5. Cookies & Tracking</h2>
+        <p>We use cookies and similar technologies for:</p>
+        <ul>
+            <li><strong>Essential Cookies:</strong> Required for login sessions and core functionality.</li>
+            <li><strong>Analytics Cookies:</strong> Google Analytics to understand how users interact with our site.</li>
+            <li><strong>Advertising Cookies:</strong> Google AdSense may use cookies to show relevant ads based on your interests.</li>
+            <li><strong>Preference Cookies:</strong> To remember your theme (dark/light) and settings.</li>
+        </ul>
+        <p>You can control cookies through your browser settings. Disabling cookies may affect some features.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-ad"></i> 6. Google AdSense & Advertising</h2>
+        <p>NoteSaver Pro uses <strong>Google AdSense</strong> to display advertisements. Google and its partners may use cookies to serve ads based on your prior visits to our website or other websites.</p>
+        <ul>
+            <li>Google's use of advertising cookies enables it to serve ads to you based on your visit to our site.</li>
+            <li>You may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Google Ad Settings</a>.</li>
+            <li>You can also opt out via <a href="https://www.aboutads.info" target="_blank" rel="noopener">aboutads.info</a>.</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-lock"></i> 7. Data Security</h2>
+        <p>We implement industry-standard security measures to protect your data:</p>
+        <ul>
+            <li>SSL/TLS encryption for all data in transit</li>
+            <li>Encrypted passwords (never stored in plain text)</li>
+            <li>Secure cloud storage with access controls</li>
+            <li>Regular security audits and updates</li>
+        </ul>
+        <p>However, no method of transmission over the Internet is 100% secure. We cannot guarantee absolute security.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-user-check"></i> 8. Your Rights</h2>
+        <p>You have the right to:</p>
+        <ul>
+            <li><strong>Access:</strong> Request a copy of your personal data.</li>
+            <li><strong>Correction:</strong> Update inaccurate or incomplete data.</li>
+            <li><strong>Deletion:</strong> Request deletion of your account and data.</li>
+            <li><strong>Portability:</strong> Export your notes and data.</li>
+            <li><strong>Opt-out:</strong> Unsubscribe from marketing emails anytime.</li>
+        </ul>
+        <p>To exercise these rights, contact us at the email below.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-child"></i> 9. Children's Privacy</h2>
+        <p>NoteSaver Pro is not directed to children under the age of <strong>13</strong>. We do not knowingly collect personal information from children under 13. If you believe your child has provided us data, please contact us immediately and we will delete it.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-globe"></i> 10. Third-Party Links</h2>
+        <p>Our website may contain links to third-party websites. We are not responsible for the privacy practices of those sites. We encourage you to read their privacy policies before providing any personal information.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2><i class="fas fa-sync"></i> 11. Changes to This Policy</h2>
+        <p>We may update this Privacy Policy from time to time. We will notify you of significant changes by posting the new policy on this page and updating the "Last Updated" date. Your continued use of the service after changes constitutes acceptance of the updated policy.</p>
+    </div>
+
+    <div class="contact-box">
+        <h3><i class="fas fa-envelope me-2"></i>Questions About Our Privacy Policy?</h3>
+        <p>If you have any questions or concerns about this Privacy Policy, please contact us.</p>
+        <a href="/contact"><i class="fas fa-paper-plane me-2"></i>Contact Us</a>
+    </div>
+
+</div>
+{% endblock %}
