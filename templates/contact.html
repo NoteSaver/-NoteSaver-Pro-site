@@ -411,11 +411,10 @@ function toggleFaq(item) {
 }
 
 document.getElementById('contactForm').addEventListener('submit', function(e) {
-    // If you have a backend route for contact, remove this preventDefault
-    // For now, shows success message on submit
-    e.preventDefault();
-    this.style.display = 'none';
-    document.getElementById('formSuccess').style.display = 'block';
+    const btn = this.querySelector('.btn-submit');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    btn.disabled = true;
+    // Form naturally Flask route pe submit hoga
 });
 </script>
 {% endblock %}
