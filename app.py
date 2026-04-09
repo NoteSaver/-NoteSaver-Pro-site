@@ -2521,7 +2521,7 @@ def terms():
 # ── CONTACT PAGE ─────────────────────────────────────
  
 @app.route('/contact', methods=['GET', 'POST'])
-@csrf.exempt  # ← Yeh add karo (public form hai, login required nahi)
+@csrf.exempt
 def contact():
     if request.method == 'POST':
         name    = request.form.get('name', '').strip()
@@ -2537,30 +2537,6 @@ def contact():
         flash("Your message has been sent! We'll respond within 24 hours.", 'success')
         return redirect(url_for('contact'))
 
-    return render_template('contact.html')
- 
-        # ── OPTION A: Send email (if you have Flask-Mail set up) ──
-        # from flask_mail import Message
-        # msg = Message(
-        #     subject=f"[NoteSaver Pro] Contact: {subject}",
-        #     sender=email,
-        #     recipients=['support@notesaverpro.com'],
-        #     body=f"From: {name} <{email}>\n\nSubject: {subject}\n\n{message}"
-        # )
-        # mail.send(msg)
- 
-        # ── OPTION B: Save to database ──
-        # contact_entry = ContactMessage(name=name, email=email,
-        #                               subject=subject, message=message)
-        # db.session.add(contact_entry)
-        # db.session.commit()
- 
-        # ── OPTION C: Just log it (for now) ──
-        print(f"[CONTACT] From: {name} <{email}> | Subject: {subject}")
- 
-        flash('Your message has been sent! We\'ll respond within 24 hours.', 'success')
-        return redirect(url_for('contact'))
- 
     return render_template('contact.html')
 
 
