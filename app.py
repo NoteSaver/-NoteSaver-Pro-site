@@ -2522,21 +2522,27 @@ def terms():
  
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    if request.method == 'POST':
-        name    = request.form.get('name', '').strip()
-        email   = request.form.get('email', '').strip()
-        subject = request.form.get('subject', '').strip()
-        message = request.form.get('message', '').strip()
+    try:
+        if request.method == 'POST':
+            name    = request.form.get('name', '').strip()
+            email   = request.form.get('email', '').strip()
+            subject = request.form.get('subject', '').strip()
+            message = request.form.get('message', '').strip()
 
-        if not all([name, email, subject, message]):
-            flash('Please fill in all required fields.', 'warning')
-            return render_template('contact.html')
+            print("DATA:", name, email, subject, message)
 
-        print(f"[CONTACT] From: {name} <{email}> | Subject: {subject}")
-        flash("Your message has been sent! We'll respond within 24 hours.", 'success')
-        return redirect(url_for('contact'))
+            if not all([name, email, subject, message]):
+                flash('Please fill in all required fields.', 'warning')
+                return render_template('contact.html')
 
-    return render_template('contact.html')
+            flash("Message sent successfully!", 'success')
+            return redirect(url_for('contact'))
+
+        return render_template('contact.html')
+
+    except Exception as e:
+        print("❌ ERROR:", e)
+        return "Server Error", 500
 
 
 
