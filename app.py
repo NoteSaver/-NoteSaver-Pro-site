@@ -316,13 +316,13 @@ def support_send_email():
         category = request.form.get('category', '').strip()
         subject  = request.form.get('subject',  '').strip()
         message  = request.form.get('message',  '').strip()
-
+ 
         if not all([category, subject, message]):
             return jsonify({'success': False, 'message': 'All fields are required.'}), 400
-
+ 
         # Generate unique ticket ref
         ref = 'NSP-' + secrets.token_hex(3).upper()
-
+ 
         # Save to database
         ticket = SupportTicket(
             ticket_ref = ref,
@@ -334,60 +334,69 @@ def support_send_email():
         )
         db.session.add(ticket)
         db.session.commit()
-
+ 
         # Email to admin
         try:
-            admin_body = (
-                f"New Support Ticket Received\n"
-                f"==========================\n"
-                f"Ticket Ref : {ref}\n"
-                f"From       : {current_user.username} ({current_user.email})\n"
-                f"Category   : {category}\n"
-                f"Subject    : {subject}\n"
-                f"Date       : {datetime.utcnow().strftime('%d %b %Y, %I:%M %p')} UTC\n\n"
-                f"Message:\n{message}\n\n"
-                f"==========================\n"
-            )
             admin_msg = Message(
-                subject    = f'[{category.upper()}] {subject} - Ticket {ref}',
-                sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
+                subject  = f'[{category.upper()}] {subject} — Ticket {ref}',
+                sender   = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
                 recipients = [app.config.get('ADMIN_EMAIL', 'admin@notesaverpro.com')],
-                body       = admin_body
+                body = f"""New Support Ticket Received
+══════════════════════════
+Ticket Ref : {ref}
+From       : {current_user.username} ({current_user.email})
+Category   : {category}
+Subject    : {subject}
+Date       : {datetime.utcnow().strftime('%d %b %Y, %I:%M %p')} UTC
+
+Message:
+{message}
+
+══════════════════════════
+Reply at: {request.host_url}admin/support
+"""
             )
             _dispatch_email(admin_msg)
         except Exception as mail_err:
             logger.warning(f'Admin email queue failed: {mail_err}')
-
+ 
         # Confirmation email to user
         try:
-            user_body = (
-                f"Hi {current_user.first_name or current_user.username},\n\n"
-                f"Thank you for contacting NoteSaver Pro Support.\n\n"
-                f"Your ticket has been created:\n"
-                f"  Ticket Ref : {ref}\n"
-                f"  Subject    : {subject}\n"
-                f"  Category   : {category}\n\n"
-                f"We typically reply within 2 hours.\n"
-                f"Our team will respond directly to this email address.\n\n"
-                f"Best regards,\n"
-                f"NoteSaver Pro Support Team"
-            )
             user_msg = Message(
-                subject    = f'We received your request - {ref}',
+                subject    = f'We received your request — {ref}',
                 sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
                 recipients = [current_user.email],
-                body       = user_body
+                body = f"""Hi {current_user.first_name or current_user.username},
+ 
+Thank you for contacting NoteSaver Pro Support.
+ 
+Your ticket has been created:
+  Ticket Ref : {ref}
+  Subject    : {subject}
+  Category   : {category}
+ 
+We typically reply within 2 hours. You can check your ticket status at:
+{request.host_url}admin/support/{ticket.id}
+ 
+Best regards,
+NoteSaver Pro Support Team
+"""
             )
             _dispatch_email(user_msg)
         except Exception as mail_err:
             logger.warning(f'User confirmation email queue failed: {mail_err}')
-
+ 
         return jsonify({'success': True, 'ticket_ref': ref})
-
+ 
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Support ticket error: {e}')
+        print(f'Support ticket error: {e}')
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
+ 
+ 
+
+ 
+ 
 # ══════════════ ADMIN ROUTES ══════════════
  
 def admin_required(f):
@@ -448,53 +457,37 @@ def admin_reply_ticket(ticket_id):
     ticket = SupportTicket.query.get_or_404(ticket_id)
     reply_text = request.form.get('reply', '').strip()
     new_status  = request.form.get('status', ticket.status)
-
+ 
     if not reply_text:
         return jsonify({'success': False, 'message': 'Reply cannot be empty.'}), 400
-
+ 
     ticket.admin_reply    = reply_text
     ticket.admin_reply_at = datetime.utcnow()
     ticket.replied_by     = current_user.email
     ticket.status         = new_status
     db.session.commit()
-
+ 
+    # Email reply to user
     try:
-        reply_body = (
-            f"Hi {ticket.user.first_name or ticket.user.username},\n\n"
-            f"We have replied to your support ticket.\n\n"
-            f"Ticket  : {ticket.ticket_ref}\n"
-            f"Subject : {ticket.subject}\n"
-            f"Status  : {new_status.replace('_', ' ').title()}\n\n"
-            f"Our Reply:\n"
-            f"--------------------------\n"
-            f"{reply_text}\n"
-            f"--------------------------\n\n"
-            f"If you need further help, simply reply to this email.\n\n"
-            f"Best regards,\n"
-            f"NoteSaver Pro Support Team"
-        )
         reply_msg = Message(
             subject    = f'Re: {ticket.subject} [{ticket.ticket_ref}]',
             sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
             recipients = [ticket.user.email],
-            body       = reply_body
-        )
-        _dispatch_email(reply_msg)
-    except Exception as e:
-        logger.warning(f'Reply email queue failed: {e}')
-
-    return jsonify({
-        'success': True,
-        'message': 'Reply sent successfully!',
-        'status':  new_status
-    })
+            body = f"""Hi {ticket.user.first_name or ticket.user.username},
+ 
+We have replied to your support ticket.
+ 
+Ticket  : {ticket.ticket_ref}
+Subject : {ticket.subject}
+Status  : {new_status.replace('_', ' ').title()}
  
 Our Reply:
 ──────────────────────────
 {reply_text}
 ──────────────────────────
  
-f"If you need further help, simply reply to this email.\n"
+If you need further help, reply to this email or visit:
+{request.host_url}support
  
 Best regards,
 NoteSaver Pro Support Team
@@ -862,8 +855,7 @@ def _dispatch_email(msg):
                     import sendgrid
                     from sendgrid.helpers.mail import (
                         Mail as SGMail, To, From, Subject,
-                        PlainTextContent, HtmlContent,
-                        TrackingSettings, ClickTracking
+                        PlainTextContent, HtmlContent
                     )
 
                     api_key = os.environ.get('SENDGRID_API_KEY', '')
@@ -877,6 +869,7 @@ def _dispatch_email(msg):
                         app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
                     )
 
+                    # recipients list handle karo
                     recipients = msg.recipients
                     if isinstance(recipients, str):
                         recipients = [recipients]
@@ -888,10 +881,7 @@ def _dispatch_email(msg):
                     for recipient in recipients:
                         sg_msg.add_to(To(recipient))
 
-                    tracking = TrackingSettings()
-                    tracking.click_tracking = ClickTracking(enable=False, enable_text=False)
-                    sg_msg.tracking_settings = tracking
-
+                    # HTML ya plain text
                     html_body = getattr(msg, 'html', None)
                     plain_body = getattr(msg, 'body', None)
 
