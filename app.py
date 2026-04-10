@@ -2521,7 +2521,6 @@ def terms():
 # ── CONTACT PAGE ─────────────────────────────────────
  
 @app.route('/contact', methods=['GET', 'POST'])
-@csrf.exempt
 def contact():
     if request.method == 'POST':
         name    = request.form.get('name', '').strip()
