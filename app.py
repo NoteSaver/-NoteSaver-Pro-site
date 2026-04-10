@@ -311,7 +311,6 @@ def support():
 @app.route('/api/support/send-email', methods=['POST'])
 @login_required
 @csrf.exempt
-@require_ajax_csrf
 def support_send_email():
     try:
         category = request.form.get('category', '').strip()
