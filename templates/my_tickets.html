@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}My Support Tickets — NoteSaver Pro{% endblock %}
+
+{% block head %}
+<style>
+.mt-wrap { max-width: 750px; margin: 2rem auto; padding: 0 1rem 4rem; }
+
+.mt-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+}
+.mt-header h4 {
+    font-family: 'Poppins', sans-serif; font-weight: 800;
+    font-size: 1.2rem; color: #0f172a; margin: 0;
+}
+.mt-header h4 i { color: #2563eb; margin-right: .5rem; }
+
+.mt-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.06);
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.mt-card-top {
+    padding: 1.1rem 1.4rem;
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    flex-wrap: wrap;
+}
+
+.mt-ref {
+    font-family: 'DM Mono', monospace;
+    font-size: .72rem; color: #2563eb; font-weight: 700;
+    margin-bottom: .25rem;
+}
+
+.mt-subject {
+    font-size: .95rem; font-weight: 700; color: #0f172a;
+    margin: 0 0 .2rem;
+}
+
+.mt-meta {
+    font-size: .72rem; color: #9ca3af;
+    font-family: 'DM Mono', monospace;
+}
+
+.mt-badge {
+    display: inline-flex; align-items: center;
+    padding: .25rem .75rem; border-radius: 50px;
+    font-size: .7rem; font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap; flex-shrink: 0;
+}
+.mt-badge.open        { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.mt-badge.in_progress { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.mt-badge.resolved    { background: #f0fdf4; color: #065f46; border: 1px solid #bbf7d0; }
+.mt-badge.closed      { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+
+.mt-cat {
+    display: inline-block;
+    padding: .15rem .55rem; border-radius: 50px;
+    font-size: .67rem; font-weight: 600;
+    background: #f1f5f9; color: #475569;
+    font-family: 'DM Mono', monospace;
+    margin-right: .4rem;
+}
+
+.mt-body { padding: 1rem 1.4rem; }
+
+.mt-msg {
+    font-size: .83rem; color: #374151;
+    background: #f9fafb; border-radius: 8px;
+    padding: .75rem 1rem; line-height: 1.6;
+}
+
+.mt-reply {
+    margin-top: .85rem;
+    font-size: .83rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: .85rem 1rem;
+    color: #065f46;
+    line-height: 1.6;
+}
+.mt-reply strong {
+    display: block; margin-bottom: .35rem;
+    font-size: .75rem; text-transform: uppercase;
+    letter-spacing: .05em; color: #059669;
+}
+
+.mt-empty {
+    text-align: center; padding: 3.5rem 1rem;
+    color: #9ca3af; font-size: .88rem;
+}
+.mt-empty i {
+    font-size: 2.5rem; display: block;
+    margin-bottom: .85rem; opacity: .35;
+}
+
+.mt-new-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff; border: none; border-radius: 8px;
+    padding: .55rem 1.2rem; font-size: .82rem;
+    font-weight: 700; text-decoration: none;
+    transition: opacity .2s, transform .2s;
+    font-family: 'Poppins', sans-serif;
+}
+.mt-new-btn:hover { opacity: .9; transform: translateY(-1px); color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-wrap">
+
+    <nav style="font-size:.75rem; color:#9ca3af; margin-bottom:1.25rem;">
+        <a href="{{ url_for('dashboard') }}" style="color:#2563eb; text-decoration:none;">Dashboard</a>
+        <span style="margin:0 .4rem;">/</span>
+        <a href="{{ url_for('support') }}" style="color:#2563eb; text-decoration:none;">Support</a>
+        <span style="margin:0 .4rem;">/</span>
+        <span>My Tickets</span>
+    </nav>
+
+    <div class="mt-header">
+        <h4><i class="fas fa-ticket-alt"></i>My Support Tickets</h4>
+        <a href="{{ url_for('support') }}" class="mt-new-btn">
+            <i class="fas fa-plus"></i> New Ticket
+        </a>
+    </div>
+
+    {% if tickets %}
+
+        {% for t in tickets %}
+        <div class="mt-card">
+            <div class="mt-card-top">
+                <div>
+                    <div class="mt-ref">{{ t.ticket_ref }}</div>
+                    <p class="mt-subject">{{ t.subject }}</p>
+                    <div>
+                        <span class="mt-cat">{{ t.category }}</span>
+                        <span class="mt-meta">{{ t.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                    </div>
+                </div>
+                <span class="mt-badge {{ t.status }}">
+                    {% if t.status == 'open' %}🔴
+                    {% elif t.status == 'in_progress' %}🔵
+                    {% elif t.status == 'resolved' %}🟢
+                    {% else %}⚫{% endif %}
+                    {{ t.status.replace('_', ' ').title() }}
+                </span>
+            </div>
+
+            <div class="mt-body">
+                <div class="mt-msg">{{ t.message }}</div>
+
+                {% if t.admin_reply %}
+                <div class="mt-reply">
+                    <strong><i class="fas fa-reply me-1"></i>Support Team Reply</strong>
+                    {{ t.admin_reply }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+    {% else %}
+    <div class="mt-card">
+        <div class="mt-empty">
+            <i class="fas fa-inbox"></i>
+            No support tickets yet.<br>
+            <a href="{{ url_for('support') }}" style="color:#2563eb; font-weight:600;">
+                Submit your first ticket
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
