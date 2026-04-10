@@ -404,9 +404,13 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for('login'))
-        admin_emails = app.config.get('ADMIN_EMAILS', [])
+
+        admin_emails = app.config.get('ADMIN_EMAILS', '')
+        admin_emails = [e.strip() for e in admin_emails.split(',') if e.strip()]
+
         if current_user.email not in admin_emails:
             return "Access Denied", 403
+
         return f(*args, **kwargs)
     return decorated
  
