@@ -395,7 +395,7 @@ NoteSaver Pro Support Team
  
  
 # ---------- User: My Tickets ----------
-@app.route('/support/admin_ticket_detail')
+@app.route('/support/my-tickets')
 @login_required
 def my_tickets():
     tickets = SupportTicket.query.filter_by(user_id=current_user.id)\
