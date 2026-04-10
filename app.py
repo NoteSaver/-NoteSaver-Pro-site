@@ -4740,11 +4740,16 @@ def update_location():
         return jsonify({"success": False, "message": "Missing coordinates"}), 400
 
     # Reverse geocoding (OpenStreetMap free API)
-    try:
-        geo = requests.get(
-            f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json",
-            headers={"User-Agent": "NoteSaverPro"}
-        ).json()
+try:
+    response = requests.get(
+        f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json",
+        headers={"User-Agent": "NoteSaverPro"},
+        timeout=5
+    )
+    if response.status_code == 200 and response.text.strip():
+        geo = response.json()
+    else:
+        geo = {}
 
         address = geo.get("address", {})
 
@@ -4755,7 +4760,7 @@ def update_location():
         location_text = f"{city}, {state}, {country}"
 
     except Exception as e:
-        logger.error("Geo error:", e)
+        logger.error(f"Geo error: {e}")
         location_text = "Unknown Location"
 
     # UPDATE CURRENT SESSION ONLY
@@ -5097,6 +5102,7 @@ def api_remove_profile_picture():
 
 @app.route('/api/account/delete', methods=['POST'])
 @login_required
+@csrf.exempt
 def api_delete_account():
     """Permanently delete account, notes and sessions in one safe transaction."""
     try:
