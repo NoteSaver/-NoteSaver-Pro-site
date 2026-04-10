@@ -316,13 +316,13 @@ def support_send_email():
         category = request.form.get('category', '').strip()
         subject  = request.form.get('subject',  '').strip()
         message  = request.form.get('message',  '').strip()
- 
+
         if not all([category, subject, message]):
             return jsonify({'success': False, 'message': 'All fields are required.'}), 400
- 
+
         # Generate unique ticket ref
         ref = 'NSP-' + secrets.token_hex(3).upper()
- 
+
         # Save to database
         ticket = SupportTicket(
             ticket_ref = ref,
@@ -334,72 +334,60 @@ def support_send_email():
         )
         db.session.add(ticket)
         db.session.commit()
- 
+
         # Email to admin
         try:
+            admin_body = (
+                f"New Support Ticket Received\n"
+                f"==========================\n"
+                f"Ticket Ref : {ref}\n"
+                f"From       : {current_user.username} ({current_user.email})\n"
+                f"Category   : {category}\n"
+                f"Subject    : {subject}\n"
+                f"Date       : {datetime.utcnow().strftime('%d %b %Y, %I:%M %p')} UTC\n\n"
+                f"Message:\n{message}\n\n"
+                f"==========================\n"
+            )
             admin_msg = Message(
-                subject  = f'[{category.upper()}] {subject} — Ticket {ref}',
-                sender   = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
+                subject    = f'[{category.upper()}] {subject} - Ticket {ref}',
+                sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
                 recipients = [app.config.get('ADMIN_EMAIL', 'admin@notesaverpro.com')],
-                body = f"""New Support Ticket Received
-══════════════════════════
-Ticket Ref : {ref}
-From       : {current_user.username} ({current_user.email})
-Category   : {category}
-Subject    : {subject}
-Date       : {datetime.utcnow().strftime('%d %b %Y, %I:%M %p')} UTC
-
-Message:
-{message}
-
-══════════════════════════
-Reply at: {request.host_url}admin/support
-"""
+                body       = admin_body
             )
             _dispatch_email(admin_msg)
         except Exception as mail_err:
             logger.warning(f'Admin email queue failed: {mail_err}')
- 
+
         # Confirmation email to user
         try:
+            user_body = (
+                f"Hi {current_user.first_name or current_user.username},\n\n"
+                f"Thank you for contacting NoteSaver Pro Support.\n\n"
+                f"Your ticket has been created:\n"
+                f"  Ticket Ref : {ref}\n"
+                f"  Subject    : {subject}\n"
+                f"  Category   : {category}\n\n"
+                f"We typically reply within 2 hours.\n"
+                f"Our team will respond directly to this email address.\n\n"
+                f"Best regards,\n"
+                f"NoteSaver Pro Support Team"
+            )
             user_msg = Message(
-                subject    = f'We received your request — {ref}',
+                subject    = f'We received your request - {ref}',
                 sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
                 recipients = [current_user.email],
-                body = f"""Hi {current_user.first_name or current_user.username},
- 
-# नया code (यह लगाओ):
-body = f"""Hi {current_user.first_name or current_user.username},
-
-Thank you for contacting NoteSaver Pro Support.
-
-Your ticket has been created:
-  Ticket Ref : {ref}
-  Subject    : {subject}
-  Category   : {category}
-
-We typically reply within 2 hours.
-Our team will respond directly to this email address.
-
-Best regards,
-NoteSaver Pro Support Team
-"""
+                body       = user_body
             )
             _dispatch_email(user_msg)
         except Exception as mail_err:
             logger.warning(f'User confirmation email queue failed: {mail_err}')
- 
+
         return jsonify({'success': True, 'ticket_ref': ref})
- 
+
     except Exception as e:
         db.session.rollback()
-        print(f'Support ticket error: {e}')
+        logger.error(f'Support ticket error: {e}')
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
- 
- 
-
- 
- 
 # ══════════════ ADMIN ROUTES ══════════════
  
 def admin_required(f):
@@ -460,29 +448,46 @@ def admin_reply_ticket(ticket_id):
     ticket = SupportTicket.query.get_or_404(ticket_id)
     reply_text = request.form.get('reply', '').strip()
     new_status  = request.form.get('status', ticket.status)
- 
+
     if not reply_text:
         return jsonify({'success': False, 'message': 'Reply cannot be empty.'}), 400
- 
+
     ticket.admin_reply    = reply_text
     ticket.admin_reply_at = datetime.utcnow()
     ticket.replied_by     = current_user.email
     ticket.status         = new_status
     db.session.commit()
- 
-    # Email reply to user
+
     try:
+        reply_body = (
+            f"Hi {ticket.user.first_name or ticket.user.username},\n\n"
+            f"We have replied to your support ticket.\n\n"
+            f"Ticket  : {ticket.ticket_ref}\n"
+            f"Subject : {ticket.subject}\n"
+            f"Status  : {new_status.replace('_', ' ').title()}\n\n"
+            f"Our Reply:\n"
+            f"--------------------------\n"
+            f"{reply_text}\n"
+            f"--------------------------\n\n"
+            f"If you need further help, simply reply to this email.\n\n"
+            f"Best regards,\n"
+            f"NoteSaver Pro Support Team"
+        )
         reply_msg = Message(
             subject    = f'Re: {ticket.subject} [{ticket.ticket_ref}]',
             sender     = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
             recipients = [ticket.user.email],
-            body = f"""Hi {ticket.user.first_name or ticket.user.username},
- 
-We have replied to your support ticket.
- 
-Ticket  : {ticket.ticket_ref}
-Subject : {ticket.subject}
-Status  : {new_status.replace('_', ' ').title()}
+            body       = reply_body
+        )
+        _dispatch_email(reply_msg)
+    except Exception as e:
+        logger.warning(f'Reply email queue failed: {e}')
+
+    return jsonify({
+        'success': True,
+        'message': 'Reply sent successfully!',
+        'status':  new_status
+    })
  
 Our Reply:
 ──────────────────────────
@@ -851,62 +856,67 @@ def _dispatch_email(msg):
     try:
         app_obj = app._get_current_object() if hasattr(app, "_get_current_object") else app
 
-def send_async():
-    with app_obj.app_context():
-        try:
-            import sendgrid
-            from sendgrid.helpers.mail import (
-                Mail as SGMail, To, From, Subject,
-                PlainTextContent, HtmlContent,
-                TrackingSettings, ClickTracking  # ← यह add करो
-            )
+        def send_async():
+            with app_obj.app_context():
+                try:
+                    import sendgrid
+                    from sendgrid.helpers.mail import (
+                        Mail as SGMail, To, From, Subject,
+                        PlainTextContent, HtmlContent,
+                        TrackingSettings, ClickTracking
+                    )
 
-            api_key = os.environ.get('SENDGRID_API_KEY', '')
-            if not api_key:
-                logger.error("SENDGRID_API_KEY not set in environment!")
-                return
+                    api_key = os.environ.get('SENDGRID_API_KEY', '')
+                    if not api_key:
+                        logger.error("SENDGRID_API_KEY not set in environment!")
+                        return
 
-            sg = sendgrid.SendGridAPIClient(api_key=api_key)
+                    sg = sendgrid.SendGridAPIClient(api_key=api_key)
 
-            from_email = From(
-                app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
-            )
+                    from_email = From(
+                        app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
+                    )
 
-            recipients = msg.recipients
-            if isinstance(recipients, str):
-                recipients = [recipients]
+                    recipients = msg.recipients
+                    if isinstance(recipients, str):
+                        recipients = [recipients]
 
-            sg_msg = SGMail()
-            sg_msg.from_email = from_email
-            sg_msg.subject = Subject(msg.subject or '(no subject)')
+                    sg_msg = SGMail()
+                    sg_msg.from_email = from_email
+                    sg_msg.subject = Subject(msg.subject or '(no subject)')
 
-            for recipient in recipients:
-                sg_msg.add_to(To(recipient))
+                    for recipient in recipients:
+                        sg_msg.add_to(To(recipient))
 
-            # ── Click Tracking बंद करो ──────────────────
-            tracking = TrackingSettings()
-            tracking.click_tracking = ClickTracking(enable=False, enable_text=False)
-            sg_msg.tracking_settings = tracking
-            # ────────────────────────────────────────────
+                    tracking = TrackingSettings()
+                    tracking.click_tracking = ClickTracking(enable=False, enable_text=False)
+                    sg_msg.tracking_settings = tracking
 
-            html_body = getattr(msg, 'html', None)
-            plain_body = getattr(msg, 'body', None)
+                    html_body = getattr(msg, 'html', None)
+                    plain_body = getattr(msg, 'body', None)
 
-            if html_body:
-                sg_msg.content = [HtmlContent(html_body)]
-            elif plain_body:
-                sg_msg.content = [PlainTextContent(plain_body)]
-            else:
-                sg_msg.content = [PlainTextContent('(empty message)')]
+                    if html_body:
+                        sg_msg.content = [HtmlContent(html_body)]
+                    elif plain_body:
+                        sg_msg.content = [PlainTextContent(plain_body)]
+                    else:
+                        sg_msg.content = [PlainTextContent('(empty message)')]
 
-            response = sg.send(sg_msg)
-            logger.info(
-                f"✅ Email sent via SendGrid HTTP API | "
-                f"status={response.status_code} | to={recipients}"
-            )
+                    response = sg.send(sg_msg)
+                    logger.info(
+                        f"✅ Email sent via SendGrid HTTP API | "
+                        f"status={response.status_code} | to={recipients}"
+                    )
 
-        except Exception as e:
-            logger.error(f"❌ SendGrid HTTP email failed to {msg.recipients}: {e}")
+                except Exception as e:
+                    logger.error(f"❌ SendGrid HTTP email failed to {msg.recipients}: {e}")
+
+        thread = threading.Thread(target=send_async)
+        thread.daemon = True
+        thread.start()
+
+    except Exception as e:
+        logger.error(f"Email dispatch setup error: {e}")
 
 
 def _send_mail_async(flask_app, msg):
