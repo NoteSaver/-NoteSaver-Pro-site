@@ -2516,31 +2516,6 @@ def terms():
  
 # ── CONTACT PAGE ─────────────────────────────────────
  
-@app.route('/contact', methods=['GET', 'POST'])
-def contact():
-    try:
-        if request.method == 'POST':
-            name    = request.form.get('name', '').strip()
-            email   = request.form.get('email', '').strip()
-            subject = request.form.get('subject', '').strip()
-            message = request.form.get('message', '').strip()
-
-            print("DATA:", name, email, subject, message)
-
-            if not all([name, email, subject, message]):
-                flash('Please fill in all required fields.', 'warning')
-                return render_template('contact.html')
-
-            flash("Message sent successfully!", 'success')
-            return redirect(url_for('contact'))
-
-        return render_template('contact.html')
-
-    except Exception as e:
-        print("❌ ERROR:", e)
-        return "Server Error", 500
-
-
 
 @app.route('/')
 @limiter.limit("100 per minute")  # General browsing limit
