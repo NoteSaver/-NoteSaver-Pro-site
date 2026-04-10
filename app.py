@@ -455,6 +455,7 @@ def admin_ticket_detail(ticket_id):
 @app.route('/admin/support/<int:ticket_id>/reply', methods=['POST'])
 @login_required
 @admin_required
+@csrf.exempt        
 def admin_reply_ticket(ticket_id):
     ticket = SupportTicket.query.get_or_404(ticket_id)
     reply_text = request.form.get('reply', '').strip()
@@ -510,6 +511,7 @@ NoteSaver Pro Support Team
 @app.route('/admin/support/<int:ticket_id>/status', methods=['POST'])
 @login_required
 @admin_required
+@csrf.exempt
 def admin_update_status(ticket_id):
     ticket     = SupportTicket.query.get_or_404(ticket_id)
     new_status = request.json.get('status')
@@ -525,6 +527,7 @@ def admin_update_status(ticket_id):
 @app.route('/admin/support/<int:ticket_id>/delete', methods=['POST'])
 @login_required
 @admin_required
+@csrf.exempt
 def admin_delete_ticket(ticket_id):
     ticket = SupportTicket.query.get_or_404(ticket_id)
     db.session.delete(ticket)
