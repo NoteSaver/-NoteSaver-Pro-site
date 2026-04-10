@@ -173,7 +173,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-app.config['ADMIN_EMAILS'] = [app.config.get('MAIL_USERNAME', '')]
+app.config['ADMIN_EMAILS'] = [e.strip() for e in os.getenv('ADMIN_EMAILS', '').split(',') if e.strip()]
 
 # ── Razorpay keys (from .env — never hardcode) ────────────
 RAZORPAY_KEY_ID     = os.getenv('RAZORPAY_KEY_ID', '')
