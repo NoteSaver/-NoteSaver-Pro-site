@@ -368,16 +368,19 @@ Reply at: {request.host_url}admin/support
                 recipients = [current_user.email],
                 body = f"""Hi {current_user.first_name or current_user.username},
  
+# नया code (यह लगाओ):
+body = f"""Hi {current_user.first_name or current_user.username},
+
 Thank you for contacting NoteSaver Pro Support.
- 
+
 Your ticket has been created:
   Ticket Ref : {ref}
   Subject    : {subject}
   Category   : {category}
- 
-We typically reply within 2 hours. You can check your ticket status at:
-{request.host_url}admin/support/{ticket.id}
- 
+
+We typically reply within 2 hours.
+Our team will respond directly to this email address.
+
 Best regards,
 NoteSaver Pro Support Team
 """
@@ -486,8 +489,7 @@ Our Reply:
 {reply_text}
 ──────────────────────────
  
-If you need further help, reply to this email or visit:
-{request.host_url}support
+f"If you need further help, simply reply to this email.\n"
  
 Best regards,
 NoteSaver Pro Support Team
@@ -849,64 +851,62 @@ def _dispatch_email(msg):
     try:
         app_obj = app._get_current_object() if hasattr(app, "_get_current_object") else app
 
-        def send_async():
-            with app_obj.app_context():
-                try:
-                    import sendgrid
-                    from sendgrid.helpers.mail import (
-                        Mail as SGMail, To, From, Subject,
-                        PlainTextContent, HtmlContent
-                    )
+def send_async():
+    with app_obj.app_context():
+        try:
+            import sendgrid
+            from sendgrid.helpers.mail import (
+                Mail as SGMail, To, From, Subject,
+                PlainTextContent, HtmlContent,
+                TrackingSettings, ClickTracking  # ← यह add करो
+            )
 
-                    api_key = os.environ.get('SENDGRID_API_KEY', '')
-                    if not api_key:
-                        logger.error("SENDGRID_API_KEY not set in environment!")
-                        return
+            api_key = os.environ.get('SENDGRID_API_KEY', '')
+            if not api_key:
+                logger.error("SENDGRID_API_KEY not set in environment!")
+                return
 
-                    sg = sendgrid.SendGridAPIClient(api_key=api_key)
+            sg = sendgrid.SendGridAPIClient(api_key=api_key)
 
-                    from_email = From(
-                        app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
-                    )
+            from_email = From(
+                app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
+            )
 
-                    # recipients list handle karo
-                    recipients = msg.recipients
-                    if isinstance(recipients, str):
-                        recipients = [recipients]
+            recipients = msg.recipients
+            if isinstance(recipients, str):
+                recipients = [recipients]
 
-                    sg_msg = SGMail()
-                    sg_msg.from_email = from_email
-                    sg_msg.subject = Subject(msg.subject or '(no subject)')
+            sg_msg = SGMail()
+            sg_msg.from_email = from_email
+            sg_msg.subject = Subject(msg.subject or '(no subject)')
 
-                    for recipient in recipients:
-                        sg_msg.add_to(To(recipient))
+            for recipient in recipients:
+                sg_msg.add_to(To(recipient))
 
-                    # HTML ya plain text
-                    html_body = getattr(msg, 'html', None)
-                    plain_body = getattr(msg, 'body', None)
+            # ── Click Tracking बंद करो ──────────────────
+            tracking = TrackingSettings()
+            tracking.click_tracking = ClickTracking(enable=False, enable_text=False)
+            sg_msg.tracking_settings = tracking
+            # ────────────────────────────────────────────
 
-                    if html_body:
-                        sg_msg.content = [HtmlContent(html_body)]
-                    elif plain_body:
-                        sg_msg.content = [PlainTextContent(plain_body)]
-                    else:
-                        sg_msg.content = [PlainTextContent('(empty message)')]
+            html_body = getattr(msg, 'html', None)
+            plain_body = getattr(msg, 'body', None)
 
-                    response = sg.send(sg_msg)
-                    logger.info(
-                        f"✅ Email sent via SendGrid HTTP API | "
-                        f"status={response.status_code} | to={recipients}"
-                    )
+            if html_body:
+                sg_msg.content = [HtmlContent(html_body)]
+            elif plain_body:
+                sg_msg.content = [PlainTextContent(plain_body)]
+            else:
+                sg_msg.content = [PlainTextContent('(empty message)')]
 
-                except Exception as e:
-                    logger.error(f"❌ SendGrid HTTP email failed to {msg.recipients}: {e}")
+            response = sg.send(sg_msg)
+            logger.info(
+                f"✅ Email sent via SendGrid HTTP API | "
+                f"status={response.status_code} | to={recipients}"
+            )
 
-        thread = threading.Thread(target=send_async)
-        thread.daemon = True
-        thread.start()
-
-    except Exception as e:
-        logger.error(f"Email dispatch setup error: {e}")
+        except Exception as e:
+            logger.error(f"❌ SendGrid HTTP email failed to {msg.recipients}: {e}")
 
 
 def _send_mail_async(flask_app, msg):
