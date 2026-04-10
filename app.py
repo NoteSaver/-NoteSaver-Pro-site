@@ -530,10 +530,7 @@ def admin_delete_ticket(ticket_id):
     db.session.commit()
     return jsonify({'success': True})
 
-# Make CSRF token available in all templates - FIXED VERSION
-@app.context_processor
-def inject_csrf_token():
-    return dict(csrf_token=generate_csrf())
+
 
 
     
