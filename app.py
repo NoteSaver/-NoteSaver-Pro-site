@@ -340,7 +340,7 @@ def support_send_email():
             admin_msg = Message(
                 subject  = f'[{category.upper()}] {subject} — Ticket {ref}',
                 sender   = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com'),
-                recipients = [app.config.get('ADMIN_EMAIL', 'admin@notesaverpro.com')],
+                recipients = [os.getenv('ADMIN_EMAIL', 'noteprosupport@gmail.com')],
                 body = f"""New Support Ticket Received
 ══════════════════════════
 Ticket Ref : {ref}
