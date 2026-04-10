@@ -246,7 +246,7 @@ def unauthorized_callback():
 
 migrate = Migrate(app, db)
 
-csrf = CSRFProtect(app)
+csrf.init_app(app)
 # Register routes
 register_unified_flow_routes(app)
 
@@ -2408,7 +2408,6 @@ def utility_processor():
     """Make utility functions available in templates"""
     return dict(
         get_note_preview=get_note_preview,
-        csrf_token=generate_csrf(),
         timedelta=timedelta   # IST conversion ke liye templates mein
     )
 
