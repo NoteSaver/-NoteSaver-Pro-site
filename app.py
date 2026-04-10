@@ -246,7 +246,7 @@ def unauthorized_callback():
 
 migrate = Migrate(app, db)
 
-csrf = CSRFProtect(app)
+csrf.init_app(app)
 # Register routes
 register_unified_flow_routes(app)
 
@@ -310,6 +310,7 @@ def support():
 # ---------- Submit Ticket + Send Email ----------
 @app.route('/api/support/send-email', methods=['POST'])
 @login_required
+@csrf.exempt
 def support_send_email():
     try:
         category = request.form.get('category', '').strip()
@@ -375,7 +376,7 @@ Your ticket has been created:
   Category   : {category}
  
 We typically reply within 2 hours. You can check your ticket status at:
-{request.host_url}support/my-tickets
+{request.host_url}admin/support/{ticket.id}
  
 Best regards,
 NoteSaver Pro Support Team
@@ -393,13 +394,7 @@ NoteSaver Pro Support Team
         return jsonify({'success': False, 'message': 'Something went wrong. Please try again.'}), 500
  
  
-# ---------- User: My Tickets ----------
-@app.route('/support/my-tickets')
-@login_required
-def my_tickets():
-    tickets = SupportTicket.query.filter_by(user_id=current_user.id)\
-                .order_by(SupportTicket.created_at.desc()).all()
-    return render_template('my_tickets.html', tickets=tickets)
+
  
  
 # ══════════════ ADMIN ROUTES ══════════════
@@ -409,9 +404,13 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for('login'))
-        admin_emails = app.config.get('ADMIN_EMAILS', [])
+
+        admin_emails = app.config.get('ADMIN_EMAILS', '')
+        admin_emails = [e.strip() for e in admin_emails.split(',') if e.strip()]
+
         if current_user.email not in admin_emails:
             return "Access Denied", 403
+
         return f(*args, **kwargs)
     return decorated
  
@@ -530,10 +529,7 @@ def admin_delete_ticket(ticket_id):
     db.session.commit()
     return jsonify({'success': True})
 
-# Make CSRF token available in all templates - FIXED VERSION
-@app.context_processor
-def inject_csrf_token():
-    return dict(csrf_token=generate_csrf())
+
 
 
     
@@ -2411,7 +2407,6 @@ def utility_processor():
     """Make utility functions available in templates"""
     return dict(
         get_note_preview=get_note_preview,
-        csrf_token=generate_csrf(),
         timedelta=timedelta   # IST conversion ke liye templates mein
     )
 
@@ -2489,9 +2484,37 @@ def apply_tiered_rate_limit(route_func, anonymous_limit, auth_limit, premium_lim
         return limiter.limit(anonymous_limit)(route_func)
 
 # ------------------- Routes ---------------------
-
-
-
+from flask import render_template, send_from_directory, request, flash, redirect, url_for
+import os
+ 
+# ── STATIC FILES (sitemap + robots) ──────────────────
+ 
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory(app.root_path, 'sitemap.xml', mimetype='application/xml')
+ 
+@app.route('/robots.txt')
+def robots():
+    return send_from_directory(app.root_path, 'robots.txt', mimetype='text/plain')
+ 
+ 
+# ── PUBLIC INFO PAGES ────────────────────────────────
+ 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+ 
+@app.route('/privacy-policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
+ 
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+ 
+ 
+# ── CONTACT PAGE ─────────────────────────────────────
+ 
 
 @app.route('/')
 @limiter.limit("100 per minute")  # General browsing limit
