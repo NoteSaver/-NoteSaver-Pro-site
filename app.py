@@ -2557,17 +2557,19 @@ def generate_otp():
     return str(randint(100000, 999999))
 
 def is_otp_valid(email, otp_code):
-    """
-    Checks if the provided OTP is valid and not expired.
-    Uses timezone-naive comparison (both DB and now() are naive UTC).
-    """
     user = User.query.filter_by(email=email).first()
     if not user:
         return False
     if not user.otp_code or not user.otp_expiry:
         return False
-    # Both values are naive UTC — compare directly
-    if user.otp_code == str(otp_code) and user.otp_expiry > datetime.utcnow():
+    
+    # Fix: दोनों को naive UTC बनाओ
+    expiry = user.otp_expiry
+    if expiry.tzinfo is not None:
+        # aware है — naive बनाओ
+        expiry = expiry.replace(tzinfo=None)
+    
+    if user.otp_code == str(otp_code) and expiry > datetime.utcnow():
         return True
     return False
 
@@ -2725,7 +2727,7 @@ def register():
             # Generate OTP and Expiry
             otp_code = generate_otp()
             user.otp_code = otp_code
-            user.otp_expiry = datetime.now() + timedelta(minutes=5)
+            user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
             
             # Save unverified user to database
             db.session.add(user)
@@ -2780,7 +2782,7 @@ def register():
                 # Generate new OTP and update DB
                 new_otp = generate_otp()
                 user.otp_code = new_otp
-                user.otp_expiry = datetime.now() + timedelta(minutes=5)
+                user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
                 db.session.commit()
                 
                 # Resend the email
