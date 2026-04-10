@@ -2,6 +2,7 @@
 {% block title %}Support — NoteSaver Pro{% endblock %}
 
 {% block head %}
+<meta name="csrf-token" content="{{ csrf_token() }}"> 
 <style>
 .sp-wrap { max-width: 600px; margin: 2rem auto; padding: 0 1rem 4rem; }
 
