@@ -376,7 +376,7 @@ Your ticket has been created:
   Category   : {category}
  
 We typically reply within 2 hours. You can check your ticket status at:
-{request.host_url}support/my-tickets
+{request.host_url}support/admin_ticket_detail
  
 Best regards,
 NoteSaver Pro Support Team
@@ -395,7 +395,7 @@ NoteSaver Pro Support Team
  
  
 # ---------- User: My Tickets ----------
-@app.route('/support/my-tickets')
+@app.route('/support/admin_ticket_detail')
 @login_required
 def my_tickets():
     tickets = SupportTicket.query.filter_by(user_id=current_user.id)\
