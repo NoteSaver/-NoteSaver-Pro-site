@@ -405,8 +405,10 @@ def admin_required(f):
         if not current_user.is_authenticated:
             return redirect(url_for('login'))
 
-        admin_emails = app.config.get('ADMIN_EMAILS', '')
-        admin_emails = [e.strip() for e in admin_emails.split(',') if e.strip()]
+        admin_emails = app.config.get('ADMIN_EMAILS', [])
+        # Handle both string "a@b.com,c@d.com" and list ['a@b.com']
+        if isinstance(admin_emails, str):
+            admin_emails = [e.strip() for e in admin_emails.split(',') if e.strip()]
 
         if current_user.email not in admin_emails:
             return "Access Denied", 403
