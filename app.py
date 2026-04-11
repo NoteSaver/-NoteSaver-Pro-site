@@ -2989,9 +2989,14 @@ def dashboard():
     categories = db.session.query(Note.category).filter_by(user_id=current_user.id).distinct().all()
     categories = [c[0] for c in categories]
 
-    return render_template('dashboard.html', notes=notes, categories=categories, 
-                         current_category=category, search=search)
-                         csrf_token=generate_csrf())
+    return render_template(
+    'dashboard.html',
+    notes=notes,
+    categories=categories,
+    current_category=category,
+    search=search,
+    csrf_token=generate_csrf()
+)
     
 @app.route('/api/auto-save', methods=['POST'])
 @login_required
@@ -3315,10 +3320,12 @@ def create_note():
             except Exception:
                 pass
     
-    return render_template('note.html', 
-                     action='Create',
-                     auto_save_data=auto_save_data,
-                     csrf_token=generate_csrf())   # ← यह add करें
+    return render_template(
+    'note.html',
+    action='Create',
+    auto_save_data=auto_save_data,
+    csrf_token=generate_csrf()
+)
 
 
 @app.route('/view_note/<int:note_id>')
