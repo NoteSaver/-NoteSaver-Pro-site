@@ -5774,6 +5774,7 @@ def api_protected_notes():
         
 @app.route('/selective-note-reset/<token>', methods=['GET', 'POST'])
 @limiter.limit("5 per hour")
+@csrf.exempt
 def selective_note_reset(token):
     try:
         email = serializer.loads(token, salt='note-password-reset-salt', max_age=3600)
