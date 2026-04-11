@@ -3311,7 +3311,7 @@ def create_note():
             except Exception:
                 pass
     
-return render_template('note.html', 
+    return render_template('note.html', 
                      action='Create',
                      auto_save_data=auto_save_data,
                      csrf_token=generate_csrf())   # ← यह add करें
@@ -3474,7 +3474,7 @@ def edit_note(note_id):
         'note.html',
         action='Edit',
         form_data=form_data,
-        note_id=note_id
+        note_id=note_id,       # ← यहाँ comma लगाएं ✅
         csrf_token=generate_csrf()  
     )
 
