@@ -4727,7 +4727,6 @@ def settings():
 @login_required
 @csrf.exempt
 def update_location():
-
     data = request.get_json(silent=True)
 
     if not data:
@@ -4739,31 +4738,28 @@ def update_location():
     if not lat or not lon:
         return jsonify({"success": False, "message": "Missing coordinates"}), 400
 
-    # Reverse geocoding (OpenStreetMap free API)
-try:
-    response = requests.get(
-        f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json",
-        headers={"User-Agent": "NoteSaverPro"},
-        timeout=5
-    )
-    if response.status_code == 200 and response.text.strip():
-        geo = response.json()
-    else:
-        geo = {}
+    try:          # ← अब यह function के अंदर है ✅
+        response = requests.get(
+            f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json",
+            headers={"User-Agent": "NoteSaverPro"},
+            timeout=5
+        )
+        if response.status_code == 200 and response.text.strip():
+            geo = response.json()
+        else:
+            geo = {}
 
         address = geo.get("address", {})
-
         city = address.get("city") or address.get("town") or address.get("village")
         state = address.get("state")
         country = address.get("country_code", "").upper()
-
         location_text = f"{city}, {state}, {country}"
 
     except Exception as e:
         logger.error(f"Geo error: {e}")
         location_text = "Unknown Location"
 
-    # UPDATE CURRENT SESSION ONLY
+    # Session update
     token = session.get("session_token")
     if not token:
         return jsonify({"success": False}), 400
