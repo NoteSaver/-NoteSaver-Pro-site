@@ -1755,6 +1755,7 @@ def user_pending_invitations():
 
 @app.route('/api/decline-invitation', methods=['POST'])
 @login_required
+@csrf.exempt
 @limiter.limit("10 per minute")
 def decline_invitation():
     """Decline a collaboration invitation."""
@@ -1792,6 +1793,7 @@ def decline_invitation():
 
 @app.route('/api/resend-invitation', methods=['POST'])
 @login_required
+@csrf.exempt 
 @limiter.limit("5 per hour")
 def resend_invitation():
     """Resend an invitation email to a collaborator"""
@@ -2536,6 +2538,7 @@ def note_page():
 # Version control को database में save करने के लिए
 @app.route('/api/version/save', methods=['POST'])
 @login_required
+@csrf.exempt 
 def save_version():
     """Placeholder — implement with Version model when ready."""
     return jsonify({'success': False, 'message': 'Not implemented yet.'}), 501
@@ -2988,6 +2991,7 @@ def dashboard():
 
     return render_template('dashboard.html', notes=notes, categories=categories, 
                          current_category=category, search=search)
+                         csrf_token=generate_csrf())
     
 @app.route('/api/auto-save', methods=['POST'])
 @login_required
@@ -4999,6 +5003,7 @@ def allowed_file(filename):
 # ================= PROFILE PICTURE UPLOAD =================
 @app.route('/api/profile/upload-picture', methods=['POST'])
 @login_required
+@csrf.exempt
 def upload_profile_picture():
     try:
 
@@ -5061,6 +5066,7 @@ def upload_profile_picture():
 @app.route('/api/profile/remove-picture', methods=['POST'])
 @login_required
 @limiter.limit("10 per hour")
+@csrf.exempt 
 def api_remove_profile_picture():
     """API endpoint to remove user profile picture"""
     try:
@@ -5274,6 +5280,7 @@ def export_data():
 @app.route('/api/password/change', methods=['POST'])
 @login_required
 @limiter.limit("5 per hour")
+@csrf.exempt
 def api_change_password():
     """API endpoint for changing user password"""
     try:
@@ -5338,6 +5345,7 @@ def api_change_password():
 @app.route('/api/preferences/update', methods=['POST'])
 @login_required
 @limiter.limit("20 per hour")
+@csrf.exempt
 def api_update_preferences():
     """API endpoint for updating user preferences"""
     try:
@@ -5367,6 +5375,7 @@ def api_update_preferences():
 @app.route('/api/notes/delete_all', methods=['POST'])
 @login_required
 @limiter.limit("3 per day")
+@csrf.exempt
 def api_delete_all_notes():
     """
     Delete all OR selected notes.
@@ -5466,6 +5475,7 @@ def api_sessions():
 
 @app.route("/api/cleanup-old-sessions", methods=["POST"])
 @login_required
+@csrf.exempt 
 def cleanup_old_sessions():
     MAX_ACTIVE_SESSIONS = 2
     active_sessions = UserSession.query.filter_by(
@@ -5521,6 +5531,7 @@ def logout_session(token):
 
 @app.route('/api/sessions/logout_all_others', methods=['POST'])
 @login_required
+@csrf.exempt
 def logout_all_others():
     current_token = session.get("session_token")
     UserSession.query.filter(
@@ -5555,6 +5566,7 @@ def logout_all_sessions():
 @app.route('/api/reset-note-password', methods=['POST'])
 @limiter.limit("3 per hour")
 @limiter.limit("10 per day")
+@csrf.exempt
 def api_reset_note_password():
     """API endpoint for requesting note password reset"""
     try:
