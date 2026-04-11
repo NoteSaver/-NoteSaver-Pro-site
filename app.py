@@ -246,7 +246,7 @@ def unauthorized_callback():
 
 migrate = Migrate(app, db)
 
-csrf.init_app(app)
+csrf = CSRFProtect(app)
 # Register routes
 register_unified_flow_routes(app)
 
