@@ -4363,6 +4363,7 @@ def note_preview(note_id):
 @limiter.limit("20 per minute")  # Password verification limit
 @limiter.limit("100 per hour")   # Hourly limit
 @login_required
+@csrf.exempt  
 def verify_note_password():
     """Verify note-specific password for protected notes"""
     try:
@@ -4404,6 +4405,7 @@ def verify_note_password():
 @app.route('/set_note_password/<int:note_id>', methods=['POST'])
 @login_required
 @limiter.limit("10 per minute")  # Password setting limit
+@csrf.exempt
 def set_note_password(note_id):
     """Set password protection for a note"""
     try:
@@ -4432,6 +4434,7 @@ def set_note_password(note_id):
 
 @app.route('/remove_note_password/<int:note_id>', methods=['POST'])
 @login_required
+@csrf.exempt 
 @limiter.limit("10 per minute")  # Password removal limit
 def remove_note_password(note_id):
     """Remove password protection from a note"""
@@ -4472,6 +4475,7 @@ def remove_note_password(note_id):
 @app.route('/toggle_private/<int:note_id>', methods=['POST'])
 @login_required
 @limiter.limit("20 per minute")  # Privacy toggle limit
+@csrf.exempt  
 def toggle_private(note_id):
     try:
         note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
