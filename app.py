@@ -246,7 +246,7 @@ def unauthorized_callback():
 
 migrate = Migrate(app, db)
 
-csrf = CSRFProtect(app)
+csrf.init_app(app)
 # Register routes
 register_unified_flow_routes(app)
 
@@ -3311,9 +3311,10 @@ def create_note():
             except Exception:
                 pass
     
-    return render_template('note.html', 
-                         action='Create',
-                         auto_save_data=auto_save_data)
+return render_template('note.html', 
+                     action='Create',
+                     auto_save_data=auto_save_data,
+                     csrf_token=generate_csrf())   # ← यह add करें
 
 
 @app.route('/view_note/<int:note_id>')
@@ -3474,6 +3475,7 @@ def edit_note(note_id):
         action='Edit',
         form_data=form_data,
         note_id=note_id
+        csrf_token=generate_csrf()  
     )
 
 
