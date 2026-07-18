@@ -2578,16 +2578,6 @@ def is_otp_valid(email, otp_code):
         return True
     return False
 
-def _send_mail_async(flask_app, msg):
-    """Send a Flask-Mail message in a background thread."""
-    with flask_app.app_context():
-        try:
-            mail.send(msg)
-            logger.info(f"Async email sent to {msg.recipients}")
-        except Exception as e:
-            logger.error(f"Async email failed to {msg.recipients}: {e}")
-
-
 def send_verification_email(user, otp_code):
     """Queue OTP email via Resend HTTP API."""
     try:
