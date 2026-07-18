@@ -63,16 +63,24 @@ class Config:
     RATELIMIT_HEADERS_ENABLED = True
 
     # ──────────────────────────────────────────────────────────
-    # 📧  EMAIL  (SendGrid via Flask-Mail)
+    # 📧  EMAIL  (Resend HTTP API)
     # ──────────────────────────────────────────────────────────
-    MAIL_SERVER         = os.environ.get('MAIL_SERVER',  'smtp.sendgrid.net')
-    MAIL_PORT           = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS        = os.environ.get('MAIL_USE_TLS',  'True').lower()  == 'true'
-    MAIL_USE_SSL        = os.environ.get('MAIL_USE_SSL',  'False').lower() == 'true'
-    MAIL_TIMEOUT        = int(os.environ.get('MAIL_TIMEOUT', 10))
-    MAIL_USERNAME       = 'apikey'
-    MAIL_PASSWORD       = _require_env('SENDGRID_API_KEY')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'noteprosupport@gmail.com')
+    # app.py ka _dispatch_email() ye key seedha os.environ se padhta hai,
+    # yahan config me bhi rakha hai taaki startup pe hi missing key pakdi jaaye.
+    RESEND_API_KEY       = _require_env('RESEND_API_KEY')
+    MAIL_DEFAULT_SENDER  = os.environ.get('MAIL_DEFAULT_SENDER', 'noteprosupport@gmail.com')
+
+    # Neeche wali SMTP settings ab actual email sending me use NAHI hoti
+    # (Resend HTTP API port 443 pe direct call karta hai). Flask-Mail
+    # extension sirf initialize hone ke liye rakha hai, isliye dummy/safe
+    # defaults hi kaafi hain — inhe .env me set karne ki zaroorat nahi.
+    MAIL_SERVER   = os.environ.get('MAIL_SERVER', 'smtp.resend.com')
+    MAIL_PORT     = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS  = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
+    MAIL_USE_SSL  = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
+    MAIL_TIMEOUT  = int(os.environ.get('MAIL_TIMEOUT', 10))
+    MAIL_USERNAME = 'resend'
+    MAIL_PASSWORD = RESEND_API_KEY
 
     # ──────────────────────────────────────────────────────────
     # ⚡ RATE LIMITING
