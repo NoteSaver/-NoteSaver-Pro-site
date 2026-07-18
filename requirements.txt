@@ -21,3 +21,4 @@ email-validator==2.2.0
 itsdangerous==2.1.2
 sendgrid
 psycopg2-binary
+resend
