@@ -1,4 +1,3 @@
-
 import io
 import os
 import re
@@ -847,7 +846,7 @@ def check_collaboration_permission(view_function):
     return decorated_function
 def _dispatch_email(msg):
     """
-    Send email via SendGrid HTTP API.
+    Send email via Resend HTTP API.
     Render free tier pe SMTP (587/465) blocked hai,
     isliye HTTP API use karo jo port 443 pe kaam karta hai.
     """
@@ -857,54 +856,58 @@ def _dispatch_email(msg):
         def send_async():
             with app_obj.app_context():
                 try:
-                    import sendgrid
-                    from sendgrid.helpers.mail import (
-                        Mail as SGMail, To, From, Subject,
-                        PlainTextContent, HtmlContent
-                    )
-
-                    api_key = os.environ.get('SENDGRID_API_KEY', '')
+                    api_key = os.environ.get('RESEND_API_KEY', '')
                     if not api_key:
-                        logger.error("SENDGRID_API_KEY not set in environment!")
+                        logger.error("RESEND_API_KEY not set in environment!")
                         return
 
-                    sg = sendgrid.SendGridAPIClient(api_key=api_key)
-
-                    from_email = From(
-                        app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
-                    )
+                    from_email = app_obj.config.get('MAIL_DEFAULT_SENDER', 'noreply@notesaverpro.com')
 
                     # recipients list handle karo
                     recipients = msg.recipients
                     if isinstance(recipients, str):
                         recipients = [recipients]
 
-                    sg_msg = SGMail()
-                    sg_msg.from_email = from_email
-                    sg_msg.subject = Subject(msg.subject or '(no subject)')
-
-                    for recipient in recipients:
-                        sg_msg.add_to(To(recipient))
-
                     # HTML ya plain text
                     html_body = getattr(msg, 'html', None)
                     plain_body = getattr(msg, 'body', None)
 
-                    if html_body:
-                        sg_msg.content = [HtmlContent(html_body)]
-                    elif plain_body:
-                        sg_msg.content = [PlainTextContent(plain_body)]
-                    else:
-                        sg_msg.content = [PlainTextContent('(empty message)')]
+                    payload = {
+                        "from": from_email,
+                        "to": recipients,
+                        "subject": msg.subject or '(no subject)',
+                    }
 
-                    response = sg.send(sg_msg)
-                    logger.info(
-                        f"✅ Email sent via SendGrid HTTP API | "
-                        f"status={response.status_code} | to={recipients}"
+                    if html_body:
+                        payload["html"] = html_body
+                    elif plain_body:
+                        payload["text"] = plain_body
+                    else:
+                        payload["text"] = '(empty message)'
+
+                    resp = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                        timeout=15,
                     )
 
+                    if resp.status_code in (200, 201):
+                        logger.info(
+                            f"✅ Email sent via Resend HTTP API | "
+                            f"status={resp.status_code} | to={recipients}"
+                        )
+                    else:
+                        logger.error(
+                            f"❌ Resend HTTP email failed to {recipients} | "
+                            f"status={resp.status_code} | body={resp.text}"
+                        )
+
                 except Exception as e:
-                    logger.error(f"❌ SendGrid HTTP email failed to {msg.recipients}: {e}")
+                    logger.error(f"❌ Resend HTTP email failed to {msg.recipients}: {e}")
 
         thread = threading.Thread(target=send_async)
         thread.daemon = True
@@ -915,7 +918,7 @@ def _dispatch_email(msg):
 
 
 def _send_mail_async(flask_app, msg):
-    """Legacy wrapper — now routes through SendGrid HTTP API."""
+    """Legacy wrapper — now routes through Resend HTTP API."""
     _dispatch_email(msg)
 
 def require_permission(required_permission):
@@ -1195,7 +1198,7 @@ def is_valid_email(email):
 
 def send_email_helper(to_email, subject, html_body):
     """
-    Send email via SendGrid HTTP API.
+    Send email via Resend HTTP API.
     Returns: (bool, error_message_or_None)
     """
     try:
@@ -1444,28 +1447,24 @@ def email_health():
     """Check if email service is configured"""
     
     try:
-        mail_server = app.config.get('MAIL_SERVER')
-        mail_port = app.config.get('MAIL_PORT')
-        mail_username = app.config.get('MAIL_USERNAME')
-        mail_use_tls = app.config.get('MAIL_USE_TLS', False)
-        
-        mail_configured = bool(mail_server and mail_port and mail_username)
-        
+        resend_api_key = os.environ.get('RESEND_API_KEY', '')
+        mail_default_sender = app.config.get('MAIL_DEFAULT_SENDER')
+
+        mail_configured = bool(resend_api_key and mail_default_sender)
+
         status = "✅ Configured" if mail_configured else "❌ Not Configured"
-        
+
         logger.info(f"📊 Email Health Check: {status}")
-        logger.info(f"   Server: {mail_server or 'Not set'}")
-        logger.info(f"   Port: {mail_port or 'Not set'}")
-        logger.info(f"   Username: {mail_username[:10] + '***' if mail_username else 'Not set'}")
-        logger.info(f"   TLS: {mail_use_tls}")
-        
+        logger.info(f"   Provider: Resend HTTP API")
+        logger.info(f"   API Key: {'Set (' + resend_api_key[:6] + '***)' if resend_api_key else 'Not set'}")
+        logger.info(f"   From address: {mail_default_sender or 'Not set'}")
+
         return jsonify({
             'success': True,
             'mail_configured': mail_configured,
-            'mail_server': mail_server or 'Not configured',
-            'mail_port': mail_port or 'Not set',
-            'mail_use_tls': mail_use_tls,
-            'mail_username_set': bool(mail_username),
+            'provider': 'resend',
+            'resend_api_key_set': bool(resend_api_key),
+            'mail_default_sender': mail_default_sender or 'Not configured',
             'status': status,
             'timestamp': datetime.utcnow().isoformat()
         }), 200
@@ -2590,7 +2589,7 @@ def _send_mail_async(flask_app, msg):
 
 
 def send_verification_email(user, otp_code):
-    """Queue OTP email via SendGrid HTTP API."""
+    """Queue OTP email via Resend HTTP API."""
     try:
         msg = Message(
             "NoteSaver Pro: Email Verification Code",
@@ -5657,12 +5656,12 @@ def api_reset_note_password():
 
 # ALSO FIX: send_note_password_reset_email function
 def _send_mail_async(flask_app, msg):
-    """Legacy wrapper — now routes through SendGrid HTTP API."""
+    """Legacy wrapper — now routes through Resend HTTP API."""
     _dispatch_email(msg)
 
 
 def send_verification_email(user, otp_code):
-    """Queue OTP email via SendGrid HTTP API."""
+    """Queue OTP email via Resend HTTP API."""
     try:
         msg = Message(
             "NoteSaver Pro: Email Verification Code",
@@ -5684,7 +5683,7 @@ def send_verification_email(user, otp_code):
 
 
 def send_note_password_reset_email(user):
-    """Send note password reset email via SendGrid HTTP API."""
+    """Send note password reset email via Resend HTTP API."""
     try:
         token = serializer.dumps(user.email, salt='note-password-reset-salt')
         reset_url = url_for('selective_note_reset', token=token, _external=True)
